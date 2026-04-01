@@ -1,0 +1,35 @@
+# ⚠️ WARNING
+# This repo must NEVER contain real secrets.
+# Always use *.example.yaml and .env.example
+
+# Node
+node_modules/
+npm-debug.log*
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+build/
+.next/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Kubernetes secrets
+**/*secret*.yaml
+**/*secrets*.yaml
+**/*postgres-secrets*.yaml
+!**/*.example.yaml
+**/*de_en_dict.json
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Logs
+logs/
+*.log

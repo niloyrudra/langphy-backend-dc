@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+
+    "rootDir": "./src",
+    "outDir": "./dist",
+
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+
+    "strict": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".", // Deprecated in favor of 'paths'
+    "paths": {
+      "@langphy/shared": ["../../shared/dist/index.d.ts"],
+      "@langphy/shared/*": ["../../shared/dist/*"]
+    }
+  },
+
+  "include": ["src/**/*"]
+}

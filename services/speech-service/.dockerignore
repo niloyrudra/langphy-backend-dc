@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Local model cache – never bake local dev weights into the image.
+# The Dockerfile downloads its own clean copy during build.
+.cache/
+*.cache
+
+# Dev/test artifacts
+*.wav
+*.mp3
+*.m4a
+*.webm
+tests/
+test_audio/
+
+# Docker / K8s local overrides
+docker-compose.override.yml
+*.local.yaml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

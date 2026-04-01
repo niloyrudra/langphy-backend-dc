@@ -1,0 +1,1 @@
+export * from "./user-deleted.v1.schema.js"

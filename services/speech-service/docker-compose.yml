@@ -1,0 +1,152 @@
+version: "3.9"
+
+services:
+  api:
+    build: .
+    command:
+      - uvicorn
+      - "app.main:app"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8001"
+    ports:
+      - "8001:8001"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      WHISPER_MODEL_SIZE: small
+      WHISPER_DEVICE: cpu
+      WHISPER_COMPUTE_TYPE: int8
+      HF_HOME: /root/.cache/huggingface
+    volumes:
+      - whisper_cache:/root/.cache/huggingface
+      - audio_tmp:/tmp
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker:
+    build: .
+    # Run worker.py directly instead of `rq worker --worker-class`.
+    # boot_worker() in worker.py calls load_model() (warm-up) BEFORE
+    # starting the RQ loop, so no cold-start on first job.
+    # This avoids RQ's import_attribute resolving app.worker.WarmWorker
+    # from a process where PYTHONPATH may not be set correctly.
+    command:
+      - python
+      - "app/worker.py"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      WHISPER_MODEL_SIZE: small
+      WHISPER_DEVICE: cpu
+      WHISPER_COMPUTE_TYPE: int8
+      HF_HOME: /root/.cache/huggingface
+    volumes:
+      - whisper_cache:/root/.cache/huggingface
+      - audio_tmp:/tmp
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  whisper_cache:
+  audio_tmp:
+
+# version: "3.9"
+
+# # ── Local dev compose ──────────────────────────────────────────────────────────
+# # Run:   docker compose up --build
+# #
+# # The worker uses WarmWorker so the model loads before the first job.
+# # On first `up`, Docker will download ~600 MB of model weights into the
+# # named volume `whisper_cache`.  Subsequent `up` calls reuse the cache.
+
+# services:
+#   api:
+#     build: .
+#     command: uvicorn app.main:app --host 0.0.0.0 --port 8001
+#     ports:
+#       - "8001:8001"
+#     environment:
+#       REDIS_HOST: redis        # NOTE: correct syntax is KEY: value, not KEY:value
+#       REDIS_PORT: "6379"
+#       WHISPER_MODEL_SIZE: small
+#       WHISPER_DEVICE: cpu
+#       WHISPER_COMPUTE_TYPE: int8
+#       HF_HOME: /root/.cache/huggingface
+#     volumes:
+#       - whisper_cache:/root/.cache/huggingface
+#       - audio_tmp:/tmp
+#     depends_on:
+#       redis:
+#         condition: service_healthy
+
+#   worker:
+#     build: .
+#     # Use WarmWorker: model is loaded in __init__ before first job is processed
+#     command: rq worker speech --worker-class app.worker.WarmWorker
+#     environment:
+#       REDIS_HOST: redis
+#       REDIS_PORT: "6379"
+#       WHISPER_MODEL_SIZE: small
+#       WHISPER_DEVICE: cpu
+#       WHISPER_COMPUTE_TYPE: int8
+#       HF_HOME: /root/.cache/huggingface
+#     volumes:
+#       - whisper_cache:/root/.cache/huggingface
+#       - audio_tmp:/tmp
+#     depends_on:
+#       redis:
+#         condition: service_healthy
+
+#   redis:
+#     image: redis:7-alpine
+#     ports:
+#       - "6379:6379"
+#     healthcheck:
+#       test: ["CMD", "redis-cli", "ping"]
+#       interval: 5s
+#       timeout: 3s
+#       retries: 5
+
+# volumes:
+#   whisper_cache:   # persists model weights across `docker compose down` / `up`
+#   audio_tmp:       # shared scratch space between api and worker
+
+
+# version: "3.9"
+
+# services:
+#   api:
+#     build: .
+#     command: uvicorn app.main:app --host 0.0.0.0 --port 8001
+#     ports:
+#       - "8001:8001"
+#     environment:
+#       - REDIS_HOST:redis
+#         REDIS_PORT:6379
+#     depends_on:
+#       - redis
+
+#   worker:
+#     build: .
+#     command: python app/worker.py
+#     depends_on:
+#       - redis
+  
+#   redis:
+#     image: redis:7-alpine
+#     ports:
+#       - "6379:6379"

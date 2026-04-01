@@ -1,0 +1,24 @@
+# ── Web framework ──────────────────────────────────────────────────────────────
+fastapi
+uvicorn[standard]
+
+# openai-whisper==20231117
+
+# ── Whisper / transcription ────────────────────────────────────────────────────
+faster-whisper          # CTranslate2-backed Whisper – fast CPU inference
+ctranslate2             # explicit pin ensures the correct CTranslate2 backend
+
+# pydub
+# ── Audio I/O ─────────────────────────────────────────────────────────────────
+ffmpeg-python           # Python bindings for ffmpeg (format conversion)
+python-multipart        # required by FastAPI for File/Form uploads
+soundfile               # fast audio decoding (WAV, FLAC, OGG)
+resampy                 # high-quality audio resampling to 16 kHz
+numpy                   # array ops on raw audio
+
+# ── Async job queue ────────────────────────────────────────────────────────────
+redis                   # Redis client
+rq                      # Redis Queue – job dispatching and worker management
+
+# ── HTTP client (for NLP service calls from tasks) ────────────────────────────
+httpx

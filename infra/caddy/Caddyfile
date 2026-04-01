@@ -1,0 +1,120 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Langphy Caddyfile
+# Replace api.langphy.com with your actual domain.
+# Caddy handles TLS automatically via Let's Encrypt — no cert config needed.
+#
+# Timeouts are generous for:
+#   - Speech: audio upload + Whisper transcription (~30s)
+#   - NLP: spaCy analysis (~5s)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+api.langphy.com {
+
+    # ── Auth ──────────────────────────────────────────────────────────────────
+    handle /api/users/* {
+        reverse_proxy auth:3000
+    }
+
+    # ── Gateway / Events ──────────────────────────────────────────────────────
+    handle /api/events/* {
+        reverse_proxy gateway:3009
+    }
+
+    # ── User data services ────────────────────────────────────────────────────
+    handle /api/streaks/* {
+        reverse_proxy streaks:3001
+    }
+
+    handle /api/progress/* {
+        reverse_proxy progress:3002
+    }
+
+    # vocabulary is handled by progress service (same port)
+    handle /api/vocabulary/* {
+        reverse_proxy progress:3002
+    }
+
+    handle /api/performance/* {
+        reverse_proxy performance:3003
+    }
+
+    handle /api/profile/* {
+        reverse_proxy profile:3004
+    }
+
+    handle /api/settings/* {
+        reverse_proxy settings:3005
+    }
+
+    # handle /api/achievements/* {
+    #     reverse_proxy achievements:3006
+    # }
+
+    handle /api/notification/* {
+        reverse_proxy notification:4011
+    }
+
+    # ── Content services ──────────────────────────────────────────────────────
+    handle /api/category/* {
+        reverse_proxy category:4000
+    }
+
+    handle /api/unit/* {
+        reverse_proxy unit:4001
+    }
+
+    handle /api/practices/* {
+        reverse_proxy practice:4002
+    }
+
+    handle /api/quizzes/* {
+        reverse_proxy quiz:4003
+    }
+
+    handle /api/speaking/* {
+        reverse_proxy speaking:4004
+    }
+
+    handle /api/reading/* {
+        reverse_proxy reading:4005
+    }
+
+    handle /api/writing/* {
+        reverse_proxy writing:4006
+    }
+
+    handle /api/listening/* {
+        reverse_proxy listening:4007
+    }
+
+    # ── AI services ───────────────────────────────────────────────────────────
+    handle /api/nlp/* {
+        reverse_proxy nlp:8000 {
+            transport http {
+                read_timeout 30s
+                write_timeout 30s
+            }
+        }
+    }
+
+    handle /api/speech/* {
+        # 50MB body for audio uploads
+        request_body {
+            max_size 50MB
+        }
+        reverse_proxy speech-api:8001 {
+            transport http {
+                read_timeout 120s
+                write_timeout 120s
+            }
+        }
+    }
+
+    # ── Global settings ───────────────────────────────────────────────────────
+    encode gzip
+    
+    log {
+        output stdout
+        format json
+    }
+}
