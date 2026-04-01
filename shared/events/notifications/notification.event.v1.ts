@@ -2,7 +2,7 @@ import {z} from "zod";
 import { BaseEventSchema } from "../base-event.schema.js";
 
 export const NotificationCreatedSchema = BaseEventSchema.extend({
-    event_type: z.literal("notification.created"),
+    event_type: z.literal("notification.created.v1"),
     event_version: z.literal(1),
     payload: z.object({
         title: z.string(),

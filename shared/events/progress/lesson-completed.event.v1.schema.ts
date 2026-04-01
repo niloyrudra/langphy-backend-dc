@@ -7,7 +7,7 @@ import { BaseEventSchema } from "../base-event.schema.js";
  */
 export const LessonCompletedEventSchema = BaseEventSchema.extend({
     event_id: z.uuid(),
-    event_type: z.literal( "lesson.completed" ),
+    event_type: z.literal( "lesson.completed.v1" ),
     event_version: z.literal(1),
     user_id: z.uuid(),
     payload: z.object({

@@ -54,7 +54,7 @@ export const initConsumer = async () => {
                     //     messages: [{
                     //         key: event.user_id,
                     //         value: JSON.stringify({
-                    //             event_type: "performance.updated",
+                    //             event_type: "performance.updated.v1",
                     //             payload: event.payload
                     //         }),
                     //     }],

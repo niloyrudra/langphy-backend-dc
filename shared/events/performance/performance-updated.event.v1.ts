@@ -2,7 +2,7 @@ import { z } from "zod";
 import { BaseEventSchema } from "../base-event.schema.js";
 
 export const PerformanceUpdatedEventSchema = BaseEventSchema.extend({
-    event_type: z.literal("session.completed"),
+    event_type: z.literal("session.completed.v1"),
     event_version: z.literal(1),
     payload: z.object({
         unit_id: z.string(),

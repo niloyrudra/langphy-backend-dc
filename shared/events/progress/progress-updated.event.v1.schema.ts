@@ -6,7 +6,7 @@ import { z } from "zod";
  */
 export const ProgressUpdatedEventSchema = z.object({
     event_id: z.uuid(),
-    event_type: z.literal( "progress.updated" ),
+    event_type: z.literal( "progress.updated.v1" ),
     event_version: z.literal(1),
     occurred_at: z.string().datetime(),
     user_id: z.uuid(),

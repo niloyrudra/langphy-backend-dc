@@ -31,7 +31,7 @@ export async function emitNotificationCreated( notification: Notification ) {
 
     const event: NotificationCreatedEvent = {
         event_id: crypto.randomUUID(),
-        event_type: "notification.created",
+        event_type: "notification.created.v1",
         event_version: 1,
         occurred_at: new Date().toISOString(),
         user_id: notification.user_id,
@@ -62,7 +62,7 @@ export async function emitReminderTriggered( notification: Notification ) {
 
     const event: ReminderTriggeredEvent = {
         event_id: crypto.randomUUID(),
-        event_type: "reminder.triggered",
+        event_type: "reminder.triggered.v1",
         event_version: 1,
         occurred_at: new Date().toISOString(),
         user_id: notification.user_id,

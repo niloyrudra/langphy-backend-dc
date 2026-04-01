@@ -1,1 +1,0 @@
-export * from "./user-password-changed.v1.schema.js";
