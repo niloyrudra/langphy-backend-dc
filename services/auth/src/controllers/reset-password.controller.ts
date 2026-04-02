@@ -4,7 +4,7 @@ import { UserModel } from "../models/user.model.js";
 import { validationResult } from "express-validator";
 import { RequestValidationError } from "../errors/request-validation-errors.js";
 import { BadRequestError } from "../errors/bad-request-errors.js";
-import { publishUserPasswordChanged } from "../kafka/producer.js";
+// import { publishUserPasswordChanged } from "../kafka/producer.js";
 import type { AuthRequest } from "../middlewares/require-auth.js";
 
 export const resetPasswordByEmailController = async ( req: AuthRequest, res: Response ) => {
@@ -35,21 +35,21 @@ export const resetPasswordByEmailController = async ( req: AuthRequest, res: Res
          * This initializes user-related services (profile, settings, etc.)
          * Consumers must be idempotent
          */
-        try {
-            await publishUserPasswordChanged({
-                event_id: uuidv4(),
-                event_type: "user.password.changed",
-                event_version: 1,
-                occurred_at: new Date().toISOString(),
-                user_id: user.id,
-                payload: {
-                    forced: false
-                },
-            });
-        }
-        catch(eventError) {
-            console.error( "Kafka publish failed:", eventError );
-        }
+        // try {
+        //     await publishUserPasswordChanged({
+        //         event_id: uuidv4(),
+        //         event_type: "user.password.changed",
+        //         event_version: 1,
+        //         occurred_at: new Date().toISOString(),
+        //         user_id: user.id,
+        //         payload: {
+        //             forced: false
+        //         },
+        //     });
+        // }
+        // catch(eventError) {
+        //     console.error( "Kafka publish failed:", eventError );
+        // }
         /** KAFKA */
         
         res.status( 200 ).send({
@@ -77,21 +77,21 @@ export const resetPasswordController = async ( req: AuthRequest, res: Response )
          * This initializes user-related services (profile, settings, etc.)
          * Consumers must be idempotent
          */
-        try {
-            await publishUserPasswordChanged({
-                event_id: uuidv4(),
-                event_type: "user.password.changed",
-                event_version: 1,
-                occurred_at: new Date().toISOString(),
-                user_id: user.id,
-                payload: {
-                    forced: false
-                },
-            });
-        }
-        catch(eventError) {
-            console.error( "Auth - Kafka publish failed:", eventError );
-        }
+        // try {
+        //     await publishUserPasswordChanged({
+        //         event_id: uuidv4(),
+        //         event_type: "user.password.changed",
+        //         event_version: 1,
+        //         occurred_at: new Date().toISOString(),
+        //         user_id: user.id,
+        //         payload: {
+        //             forced: false
+        //         },
+        //     });
+        // }
+        // catch(eventError) {
+        //     console.error( "Auth - Kafka publish failed:", eventError );
+        // }
         /** KAFKA */
 
         res.status(200).json({ message: "Password changed successfully!" });

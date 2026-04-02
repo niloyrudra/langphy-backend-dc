@@ -8,5 +8,8 @@
     "build": "npm run build -w shared && npm run build -w services/auth && npm run build -w services/profile && npm run build -w services/performance && npm run build -w services/progress && npm run build -w services/settings && npm run build -w services/streaks && npm run build -w services/gateway-service && npm run build -w services/notification",
     "dev": "npm run dev -w services/auth",
     "clean": "rm -rf node_modules services/**/node_modules shared/node_modules"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.0"
   }
 }

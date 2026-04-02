@@ -61,7 +61,7 @@ export const verifyOtpController = async (req: Request, res: Response) => {
     try {
         await publishUserRegistered({
             event_id: uuidv4(),
-            event_type: "user.registered",
+            event_type: "user.registered.v1",
             event_version: 1,
             occurred_at: new Date().toISOString(),
             user_id: user.id,
@@ -103,7 +103,7 @@ export const signupController = async ( req: Request, res: Response ) => {
         try {
             await publishUserRegistered({
                 event_id: uuidv4(),
-                event_type: "user.registered",
+                event_type: "user.registered.v1",
                 event_version: 1,
                 occurred_at: new Date().toISOString(),
                 user_id: user.id,

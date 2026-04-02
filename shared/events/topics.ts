@@ -10,8 +10,8 @@ export const TOPICS = {
 
     SETTINGS_UPDATED: "settings.updated.v1",
 
-    STREAK_UPDATED: "streaks.updated.v1",
-    STREAK_UPDATED_DLQ: "streaks.updated.dlq.v1",
+    STREAK_UPDATED: "streak.updated.v1",
+    STREAK_UPDATED_DLQ: "streak.updated.dlq.v1",
 
     PRACTICE_COMPLETED: "practice.completed.v1",
 

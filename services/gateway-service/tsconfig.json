@@ -15,8 +15,8 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
 
-    "ignoreDeprecations" : "6.0",
-    "baseUrl": ".", // Deprecated in favor of 'paths'
+    // "ignoreDeprecations" : "5.0",
+    // "baseUrl": ".", // Deprecated in favor of 'paths'
     "paths": {
       "@langphy/shared": ["../../shared/dist/index.d.ts"],
       "@langphy/shared/*": ["../../shared/dist/*"]

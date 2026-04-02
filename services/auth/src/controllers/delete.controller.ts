@@ -33,7 +33,7 @@ export const deleteController = async ( req: AuthRequest, res: Response ) => {
         try {
             await publishUserDeleted({
                 event_id: uuidv4(),
-                event_type: "user.deleted",
+                event_type: "user.deleted.v1",
                 event_version: 1,
                 occurred_at: new Date().toISOString(),
                 user_id: userId, // req.currentUser!.id
