@@ -1,6 +1,7 @@
+import type { Kafka } from "kafkajs";
 import { createKafkaClient } from "@langphy/shared";
  
-export const kafka = createKafkaClient();
+export const kafka: Kafka = createKafkaClient();
 
 // import { Kafka } from "kafkajs";
 

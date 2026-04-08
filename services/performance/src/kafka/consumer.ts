@@ -70,10 +70,8 @@ export const initConsumer = async () => {
                     if ( await EventIndexModel.exists( event.event_id ) ) return;
 
                     await DeletedUsersRepo.insert( event.user_id );
-
                     await SessionPerformanceRepo.deleteSessionPerformanceByUserId( event.user_id );
                     await SessionAttemptRepo.deleteSessionAttemptsByUserId( event.user_id );
-
                     await EventIndexModel.markProcessed( event );
 
                     console.log( "🗑 Session Performance deleted for:", event.user_id );

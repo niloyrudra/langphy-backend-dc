@@ -62,7 +62,7 @@ def get_job(job_id: str) -> dict | None:
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
-@router.post("/api/speech/evaluate")
+@router.post("/api/speech/evaluate/")
 async def evaluate_speech(
     audio: UploadFile = File(...),
     expected_text: str = Form(...),
@@ -109,7 +109,7 @@ async def evaluate_speech(
     return {"job_id": job_id, "status": "processing"}
 
 
-@router.get("/api/speech/result/{job_id}")
+@router.get("/api/speech/result/{job_id}/")
 async def get_result(job_id: str):
     job = get_job(job_id)
 
@@ -122,13 +122,13 @@ async def get_result(job_id: str):
 
 # ── Health endpoints ───────────────────────────────────────────────────────────
 
-@router.get("/health/live", tags=["Health"])
+@router.get("/health/live/", tags=["Health"])
 def liveness():
     """Kubernetes livenessProbe — returns 200 as long as the process is alive."""
     return {"status": "alive"}
 
 
-@router.get("/health/ready", tags=["Health"])
+@router.get("/health/ready/", tags=["Health"])
 def readiness():
     """
     Kubernetes readinessProbe — returns 200 only after load_model() completes.

@@ -13,7 +13,8 @@
 # Caddy: reverse proxy, auto HTTPS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-version: "3.9"
+# Removed: version (obsolete), fixed pg_isready healthcheck
+# version: "3.9"
 
 # ── Shared env anchors ─────────────────────────────────────────────────────────
 x-pg: &pg
@@ -48,7 +49,8 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U langphy_admin"]
+      # ✅ Fixed: added -d langphy_auth so pg_isready connects to the correct db
+      test: ["CMD-SHELL", "pg_isready -U langphy_admin -d langphy_auth"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -84,6 +86,11 @@ services:
       PG_DB: langphy_auth
       RESEND_API_KEY: ${RESEND_API_KEY}
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
+    # healthcheck:
+    #   test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+    #   interval: 10s
+    #   timeout: 3s
+    #   retries: 5
     networks:
       - langphy
 
@@ -98,6 +105,11 @@ services:
       SERVICE_NAME: streaks-service
       PG_DB: langphy_streaks
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
+    # healthcheck:
+    #   test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+    #   interval: 10s
+    #   timeout: 3s
+    #   retries: 5
     networks:
       - langphy
 
@@ -277,6 +289,7 @@ services:
       WHISPER_COMPUTE_TYPE: int8
       WHISPER_NUM_WORKERS: "1"
       HF_HOME: /root/.cache/huggingface
+      HF_TOKEN: ${HF_TOKEN}
     volumes:
       - audio_tmp:/tmp
       - whisper_cache:/root/.cache/huggingface
@@ -299,6 +312,7 @@ services:
       WHISPER_COMPUTE_TYPE: int8
       WHISPER_NUM_WORKERS: "1"
       HF_HOME: /root/.cache/huggingface
+      HF_TOKEN: ${HF_TOKEN}
     volumes:
       - audio_tmp:/tmp
       - whisper_cache:/root/.cache/huggingface
@@ -316,8 +330,13 @@ services:
     image: caddy:2-alpine
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      # ✅ Changed 80/443 to 8080/8443 for local testing (avoids port conflict)
+      # On Railway these map correctly — Railway handles external 80/443
+      # Change back to "80:80" and "443:443" when deploying to Railway
+      # - "8080:80"
+      # - "8443:443"
+      - "80:80" #for Production
+      - "443:443" #for Production
     volumes:
       - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
