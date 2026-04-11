@@ -1,3 +1,255 @@
+# Langphy Caddyfile — Railway Production
+# ─────────────────────────────────────────────────────────────────────────
+# This uses Railway reference variables for upstream addresses.
+# Each upstream is set as an env var in the Caddy service variables.
+# Pattern: SERVICE_HOST=${{service-name.RAILWAY_PRIVATE_DOMAIN}}
+#          SERVICE_PORT=${{service-name.PORT}}
+#
+# IMPORTANT: Every backend service must have PORT set as a fixed variable.
+# ─────────────────────────────────────────────────────────────────────────
+
+{
+    auto_https off
+    admin off
+    persist_config off
+
+    servers {
+        trusted_proxies static private_ranges
+    }
+}
+
+:{$PORT} {
+
+    log {
+        output stdout
+        format json
+    }
+
+    handle /api/users/* {
+        reverse_proxy {$AUTH_HOST}:{$AUTH_PORT}
+    }
+
+    handle /api/events/* {
+        reverse_proxy {$GATEWAY_HOST}:{$GATEWAY_PORT}
+    }
+
+    handle /api/streaks/* {
+        reverse_proxy {$STREAKS_HOST}:{$STREAKS_PORT}
+    }
+
+    handle /api/progress/* {
+        reverse_proxy {$PROGRESS_HOST}:{$PROGRESS_PORT}
+    }
+
+    handle /api/vocabulary/* {
+        reverse_proxy {$PROGRESS_HOST}:{$PROGRESS_PORT}
+    }
+
+    handle /api/performance/* {
+        reverse_proxy {$PERFORMANCE_HOST}:{$PERFORMANCE_PORT}
+    }
+
+    handle /api/profile/* {
+        reverse_proxy {$PROFILE_HOST}:{$PROFILE_PORT}
+    }
+
+    handle /api/settings/* {
+        reverse_proxy {$SETTINGS_HOST}:{$SETTINGS_PORT}
+    }
+
+    handle /api/notification/* {
+        reverse_proxy {$NOTIFICATION_HOST}:{$NOTIFICATION_PORT}
+    }
+
+    handle /api/category/* {
+        reverse_proxy {$CATEGORY_HOST}:{$CATEGORY_PORT}
+    }
+
+    handle /api/unit/* {
+        reverse_proxy {$UNIT_HOST}:{$UNIT_PORT}
+    }
+
+    handle /api/practices/* {
+        reverse_proxy {$PRACTICE_HOST}:{$PRACTICE_PORT}
+    }
+
+    handle /api/quizzes/* {
+        reverse_proxy {$QUIZ_HOST}:{$QUIZ_PORT}
+    }
+
+    handle /api/speaking/* {
+        reverse_proxy {$SPEAKING_HOST}:{$SPEAKING_PORT}
+    }
+
+    handle /api/reading/* {
+        reverse_proxy {$READING_HOST}:{$READING_PORT}
+    }
+
+    handle /api/writing/* {
+        reverse_proxy {$WRITING_HOST}:{$WRITING_PORT}
+    }
+
+    handle /api/listening/* {
+        reverse_proxy {$LISTENING_HOST}:{$LISTENING_PORT}
+    }
+
+    handle /api/nlp/* {
+        reverse_proxy {$NLP_HOST}:{$NLP_PORT} {
+            transport http {
+                read_timeout 30s
+                write_timeout 30s
+            }
+        }
+    }
+
+    handle /api/speech/* {
+        request_body {
+            max_size 50MB
+        }
+        reverse_proxy {$SPEECH_API_HOST}:{$SPEECH_API_PORT} {
+            transport http {
+                read_timeout 120s
+                write_timeout 120s
+            }
+        }
+    }
+
+    encode gzip
+}
+
+
+
+
+
+
+
+
+
+# Langphy Caddyfile — Railway Production
+# ─────────────────────────────────────────────────────────────────────────
+# KEY POINTS:
+# 1. {$PORT} — Railway injects PORT env var, Caddy must listen on it
+# 2. auto_https off — Railway handles TLS, Caddy must NOT redirect to HTTPS
+# 3. trusted_proxies — trust Railway's edge proxy for real IP forwarding
+# 4. http:// prefix on upstream — forces plain HTTP, no TLS attempt
+# 5. Hardcoded ports match what each service actually listens on
+# ─────────────────────────────────────────────────────────────────────────
+
+# {
+#     auto_https off
+#     admin off
+
+#     servers {
+#         trusted_proxies static private_ranges
+#     }
+# }
+
+# :{$PORT} {
+
+#     log {
+#         output stdout
+#         format json
+#     }
+
+#     # ── Auth ────────────────────────────────────────────────────────────
+#     handle /api/users/* {
+#         reverse_proxy http://auth.railway.internal:3000
+#     }
+
+#     # ── Gateway ─────────────────────────────────────────────────────────
+#     handle /api/events/* {
+#         reverse_proxy http://gateway.railway.internal:3009
+#     }
+
+#     # ── User data services ───────────────────────────────────────────────
+#     handle /api/streaks/* {
+#         reverse_proxy http://streaks.railway.internal:3001
+#     }
+
+#     handle /api/progress/* {
+#         reverse_proxy http://progress.railway.internal:3002
+#     }
+
+#     handle /api/vocabulary/* {
+#         reverse_proxy http://progress.railway.internal:3002
+#     }
+
+#     handle /api/performance/* {
+#         reverse_proxy http://performance.railway.internal:3003
+#     }
+
+#     handle /api/profile/* {
+#         reverse_proxy http://profile.railway.internal:3004
+#     }
+
+#     handle /api/settings/* {
+#         reverse_proxy http://settings.railway.internal:3005
+#     }
+
+#     handle /api/notification/* {
+#         reverse_proxy http://notification.railway.internal:4011
+#     }
+
+#     # ── Content services ─────────────────────────────────────────────────
+#     handle /api/category/* {
+#         reverse_proxy http://category.railway.internal:4000
+#     }
+
+#     handle /api/unit/* {
+#         reverse_proxy http://unit.railway.internal:4001
+#     }
+
+#     handle /api/practices/* {
+#         reverse_proxy http://practice.railway.internal:4002
+#     }
+
+#     handle /api/quizzes/* {
+#         reverse_proxy http://quiz.railway.internal:4003
+#     }
+
+#     handle /api/speaking/* {
+#         reverse_proxy http://speaking.railway.internal:4004
+#     }
+
+#     handle /api/reading/* {
+#         reverse_proxy http://reading.railway.internal:4005
+#     }
+
+#     handle /api/writing/* {
+#         reverse_proxy http://writing.railway.internal:4006
+#     }
+
+#     handle /api/listening/* {
+#         reverse_proxy http://listening.railway.internal:4007
+#     }
+
+#     # ── AI services ──────────────────────────────────────────────────────
+#     handle /api/nlp/* {
+#         reverse_proxy http://nlp.railway.internal:8000 {
+#             transport http {
+#                 read_timeout 30s
+#                 write_timeout 30s
+#             }
+#         }
+#     }
+
+#     handle /api/speech/* {
+#         request_body {
+#             max_size 50MB
+#         }
+#         reverse_proxy http://speech-api.railway.internal:8001 {
+#             transport http {
+#                 read_timeout 120s
+#                 write_timeout 120s
+#             }
+#         }
+#     }
+
+#     encode gzip
+# }
+
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Langphy Caddyfile
 # Replace api.langphy.com with your actual domain.
@@ -16,109 +268,113 @@
 #                       in docker-compose.yml
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# :80 { # For Development
-app.langphy.com { # For Production
-    # ── Auth ──────────────────────────────────────────────────────────────────
-    handle /api/users/* {
-        reverse_proxy auth:3000
-    }
+# Railway handles TLS externally.
+# Caddy must NOT redirect to HTTPS — it only proxies plain HTTP.
+# auto_https off disables Caddy's automatic HTTPS redirect.
+# {
+#     auto_https off
+# }
 
-    # ── Gateway ───────────────────────────────────────────────────────────────
-    handle /api/events/* {
-        reverse_proxy gateway:3009
-    }
+# # :80 { # For Development
+# # app.langphy.com {
+# :{$PORT} {
 
-    # ── User data services ────────────────────────────────────────────────────
-    handle /api/streaks/* {
-        reverse_proxy streaks:3001
-    }
+#     handle /api/users/* {
+#         reverse_proxy auth.railway.internal:{PORT}
+#     }
 
-    handle /api/progress/* {
-        reverse_proxy progress:3002
-    }
+#     handle /api/events/* {
+#         reverse_proxy gateway.railway.internal:3009
+#     }
 
-    handle /api/vocabulary/* {
-        reverse_proxy progress:3002
-    }
+#     handle /api/streaks/* {
+#         reverse_proxy streaks.railway.internal:3001
+#     }
 
-    handle /api/performance/* {
-        reverse_proxy performance:3003
-    }
+#     handle /api/progress/* {
+#         reverse_proxy progress.railway.internal:3002
+#     }
 
-    handle /api/profile/* {
-        reverse_proxy profile:3004
-    }
+#     handle /api/vocabulary/* {
+#         reverse_proxy progress.railway.internal:3002
+#     }
 
-    handle /api/settings/* {
-        reverse_proxy settings:3005
-    }
+#     handle /api/performance/* {
+#         reverse_proxy performance.railway.internal:3003
+#     }
 
-    handle /api/notification/* {
-        reverse_proxy notification:4011
-    }
+#     handle /api/profile/* {
+#         reverse_proxy profile.railway.internal:3004
+#     }
 
-    # ── Content services ──────────────────────────────────────────────────────
-    handle /api/category/* {
-        reverse_proxy category:4000
-    }
+#     handle /api/settings/* {
+#         reverse_proxy settings.railway.internal:3005
+#     }
 
-    handle /api/unit/* {
-        reverse_proxy unit:4001
-    }
+#     handle /api/notification/* {
+#         reverse_proxy notification.railway.internal:4011
+#     }
 
-    handle /api/practices/* {
-        reverse_proxy practice:4002
-    }
+#     handle /api/category/* {
+#         reverse_proxy category.railway.internal
+#     }
 
-    handle /api/quizzes/* {
-        reverse_proxy quiz:4003
-    }
+#     handle /api/unit/* {
+#         reverse_proxy unit.railway.internal:4001
+#     }
 
-    handle /api/speaking/* {
-        reverse_proxy speaking:4004
-    }
+#     handle /api/practices/* {
+#         reverse_proxy practice.railway.internal:4002
+#     }
 
-    handle /api/reading/* {
-        reverse_proxy reading:4005
-    }
+#     handle /api/quizzes/* {
+#         reverse_proxy quiz.railway.internal:4003
+#     }
 
-    handle /api/writing/* {
-        reverse_proxy writing:4006
-    }
+#     handle /api/speaking/* {
+#         reverse_proxy speaking.railway.internal:4004
+#     }
 
-    handle /api/listening/* {
-        reverse_proxy listening:4007
-    }
+#     handle /api/reading/* {
+#         reverse_proxy reading.railway.internal:4005
+#     }
 
-    # ── AI services ───────────────────────────────────────────────────────────
-    handle /api/nlp/* {
-        reverse_proxy nlp:8000 {
-            transport http {
-                read_timeout 30s
-                write_timeout 30s
-            }
-        }
-    }
+#     handle /api/writing/* {
+#         reverse_proxy writing.railway.internal:4006
+#     }
 
-    handle /api/speech/* {
-        request_body {
-            max_size 50MB
-        }
-        reverse_proxy speech-api:8001 {
-            transport http {
-                read_timeout 120s
-                write_timeout 120s
-            }
-        }
-    }
+#     handle /api/listening/* {
+#         reverse_proxy listening.railway.internal:4007
+#     }
 
-    encode gzip
+#     handle /api/nlp/* {
+#         reverse_proxy nlp.railway.internal:8000 {
+#             transport http {
+#                 read_timeout 30s
+#                 write_timeout 30s
+#             }
+#         }
+#     }
 
-    log {
-        output stdout
-        format json
-    }
-}
+#     handle /api/speech/* {
+#         request_body {
+#             max_size 50MB
+#         }
+#         reverse_proxy speech-api.railway.internal:8001 {
+#             transport http {
+#                 read_timeout 120s
+#                 write_timeout 120s
+#             }
+#         }
+#     }
+
+#     encode gzip
+
+#     log {
+#         output stdout
+#         format json
+#     }
+# }
 
 
 # app.langphy.com {

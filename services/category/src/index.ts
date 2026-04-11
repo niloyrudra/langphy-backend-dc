@@ -16,5 +16,5 @@ app.all( "*", async ( req, res ) => { throw new Error("404!") } );
 
 connectMongo();
 
-const PORT = 4000;
-app.listen( PORT, () => console.log( `Category service listening on port ${PORT}.` ) );
+const PORT: number = parseInt(process.env.PORT || "4000", 10);
+app.listen( PORT, '::', () => console.log( `Category service listening on port ${PORT}.` ) );

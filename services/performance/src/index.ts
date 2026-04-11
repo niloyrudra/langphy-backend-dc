@@ -24,6 +24,8 @@ const start = async () => {
     catch(err) {
         console.error("Performance - Kafka failed to initiate.");
     }
-    app.listen( 3003, () => console.log("Performance Service is running on port 3003") );
+
+    const PORT: number = parseInt(process.env.PORT || "3003", 10);
+    app.listen( PORT, '::', () => console.log(`Performance Service is running on port ${PORT}`) );
 }
 start();

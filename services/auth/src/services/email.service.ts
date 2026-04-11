@@ -5,7 +5,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export const sendOtpEmail = async (email: string, otp: string): Promise<void> => {
     console.log(`Sending OTP email to ${email} with code ${otp}`);
     await resend.emails.send({
-        from: "onboarding@resend.dev", // "Langphy <no-reply@langphy.com>", // use verified domain or onboarding@resend.dev for testing
+        from: "Langphy <no-reply@langphy.com>", // "onboarding@resend.dev", // "Langphy <no-reply@langphy.com>", // use verified domain or onboarding@resend.dev for testing
         to: email,
         subject: "Your Langphy verification code",
         html: `

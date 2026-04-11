@@ -27,6 +27,8 @@ const start = async () => {
     catch(err) {
         console.log( "PRogress - Kafka producer failed:", err );
     }
-    app.listen( 3002, () => console.log("Progress Service is running on port 3002") );
+    
+    const PORT: number = parseInt(process.env.PORT || "3002", 10);
+    app.listen( PORT, '::', () => console.log(`Progress Service is running on port ${PORT}`) );
 }
 start();

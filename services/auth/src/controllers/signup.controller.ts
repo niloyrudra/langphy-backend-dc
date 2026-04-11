@@ -3,16 +3,16 @@ import { v4 as uuidv4 } from "uuid";
 import { UserModel } from "../models/user.model.js";
 import { OtpModel } from "../models/otp.model.js";
 // import { DatabaseConnectionErrors } from "../errors/database-connection-errors.js";
-import { validationResult } from "express-validator";
-import { RequestValidationError } from "../errors/request-validation-errors.js";
+// import { validationResult } from "express-validator";
+// import { RequestValidationError } from "../errors/request-validation-errors.js";
 import { BadRequestError } from "../errors/bad-request-errors.js";
 import { publishUserRegistered } from "../kafka/producer.js";
 import { sendOtpEmail } from "../services/email.service.js";
 
 // Step 1 — request OTP (replaces old signupController)
 export const requestOtpController = async (req: Request, res: Response) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) throw new RequestValidationError(errors.array());
+    // const errors = validationResult(req);
+    // if (!errors.isEmpty()) throw new RequestValidationError(errors.array());
 
     const { email, password } = req.body;
 
@@ -39,8 +39,8 @@ export const requestOtpController = async (req: Request, res: Response) => {
 
 // Step 2 — verify OTP and create user
 export const verifyOtpController = async (req: Request, res: Response) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) throw new RequestValidationError(errors.array());
+    // const errors = validationResult(req);
+    // if (!errors.isEmpty()) throw new RequestValidationError(errors.array());
 
     const { email, password, otp } = req.body;
 
@@ -78,9 +78,9 @@ export const verifyOtpController = async (req: Request, res: Response) => {
 };
 
 export const signupController = async ( req: Request, res: Response ) => {
-    const errors = validationResult(req);
+    // const errors = validationResult(req);
     
-    if( ! errors.isEmpty() ) throw new RequestValidationError( errors.array() );
+    // if( ! errors.isEmpty() ) throw new RequestValidationError( errors.array() );
             
     const { email, password } = req.body;
 

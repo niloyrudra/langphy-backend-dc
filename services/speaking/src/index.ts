@@ -16,5 +16,5 @@ app.use( speakingRouter );
 
 connectMongo();
 
-const PORT = 4004;
-app.listen( PORT, () => console.log( `Speaking service listening on port ${PORT}.` ) );
+const PORT: number = parseInt(process.env.PORT || "4004", 10);
+app.listen( PORT, '::', () => console.log( `Speaking service listening on port ${PORT}.` ) );

@@ -28,7 +28,8 @@ const start = async () => {
         console.error("Streaks - 'startKafka' failed to initiate");
     }
 
-    app.listen( 3001, () => console.log("Streaks Service is running on port 3001") );
+    const PORT: number = parseInt(process.env.PORT || "3001", 10);
+    app.listen( PORT, '::', () => console.log(`Streaks Service is running on port ${PORT}`) );
 
 }
 

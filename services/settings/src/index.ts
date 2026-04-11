@@ -25,7 +25,9 @@ const start = async () => {
     catch(err) {
         console.error("Settings Kafka failed:", err);
     }
-    app.listen( 3005, () => console.log("Settings Service is running on port 3005") );
+    
+    const PORT: number = parseInt(process.env.PORT || "3005", 10);
+    app.listen( PORT, '::', () => console.log(`Settings Service is running on port ${PORT}`) );
 }
 
 start();

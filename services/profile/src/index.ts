@@ -29,7 +29,9 @@ const start = async () => {
     catch(err) {
         console.error("Profile Kafka failed:", err);
     }
-    app.listen( 3004, () => console.log("Profile Service is running on port 3004") );
+    
+    const PORT: number = parseInt(process.env.PORT || "3004", 10);
+    app.listen( PORT, '::', () => console.log(`Profile Service is running on port ${PORT}`) );
 }
 
 start();

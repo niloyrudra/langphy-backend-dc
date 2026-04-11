@@ -15,7 +15,8 @@ const start = async () => {
   catch(error) {
     console.error("Gateway - Kafka initProducer failed", error)
   }
-  app.listen(3009, () => console.log("Gateway Service running on port 3009"));
+  const PORT: number = parseInt(process.env.PORT || "3009", 10);
+  app.listen( PORT, '::', () => console.log(`Gateway Service running on port ${PORT}`));
 };
 
 start();

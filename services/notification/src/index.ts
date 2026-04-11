@@ -35,6 +35,7 @@ const start = async () => {
     // 👇 START CRON HERE
     startDailyReminderJob();
 
-    app.listen( 4011, () => console.log("Notifications Service is running on port 4011") );
+    const PORT: number = parseInt(process.env.PORT || "4011", 10);
+    app.listen( PORT, '::', () => console.log(`Notifications Service is running on port ${PORT}`) );
 }
 start();

@@ -10,7 +10,8 @@
 import { Kafka, type KafkaConfig } from "kafkajs";
 
 export const createKafkaClient = (serviceName?: string): Kafka => {
-    const broker = process.env.KAFKA_BROKER || "kafka-srv:9092";
+    // const broker = process.env.KAFKA_BROKER || "kafka-srv:9092";
+    const broker = process.env.KAFKA_BROKER!;
     const username = process.env.KAFKA_SASL_USERNAME;
     const password = process.env.KAFKA_SASL_PASSWORD;
 

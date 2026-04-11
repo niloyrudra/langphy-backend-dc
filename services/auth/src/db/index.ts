@@ -12,3 +12,8 @@ export const pgPool = new Pool({
 pgPool.on('connect', () => {
   console.log('✅ Connected to User PostgreSQL');
 });
+
+pgPool.on('error', (err) => {
+  console.error('AUTH - Unexpected error on idle client', err);
+  // This will help you see the "password authentication failed" in your app logs too
+});

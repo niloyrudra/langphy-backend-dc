@@ -28,7 +28,6 @@ app.use( deleteAccountRouter );
 app.use( errorHandler );
 
 const start = async () => {
-  const PORT = 3000;
   try {
     await initProducer();
     console.log("Kafka Auth Producer connected successfully!");
@@ -36,8 +35,10 @@ const start = async () => {
     console.warn("Kafka Producer failed to connect, continuing without Kafka:", err);
   }
 
-  app.listen(PORT, () => {
+  const PORT: number = parseInt(process.env.PORT || "3000", 10);
+  app.listen( PORT, '::', () => {
     console.log(`Auth Service listening to port ${PORT}`);
+    console.log("KAFKA_BROKER:", process.env.KAFKA_BROKER);
   });
 };
 

@@ -16,5 +16,5 @@ app.use( readingRouter );
 
 connectMongo();
 
-const PORT = 4005;
-app.listen( PORT, () => console.log( `Reading service listening on port ${PORT}.` ) );
+const PORT: number = parseInt(process.env.PORT || "4005", 10);
+app.listen( PORT, '::', () => console.log( `Reading service listening on port ${PORT}.` ) );

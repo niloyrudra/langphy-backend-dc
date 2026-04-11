@@ -1,22 +1,9 @@
-# ═══════════════════════════════════════════════════════════════════════════════
-# Langphy Backend — Production Docker Compose for Railway
-# ═══════════════════════════════════════════════════════════════════════════════
-#
-# Kafka: Confluent Cloud (external managed service)
-#   - No Kafka container needed
-#   - KAFKA_BROKER, KAFKA_SASL_USERNAME, KAFKA_SASL_PASSWORD set via .env
-#   - Uses SASL_PLAIN + TLS (standard Confluent Cloud connection)
-#
-# PostgreSQL: single container, 9 databases via init.sql
-# Redis: container for speech service RQ queue
-# MongoDB: Atlas (external, no change)
-# Caddy: reverse proxy, auto HTTPS
-# ═══════════════════════════════════════════════════════════════════════════════
+# Langphy Backend — Railway Production Docker Compose
+# Fixes:
+#   1. postgres PGDATA moved to subdirectory (fixes lost+found Railway volume issue)
+#   2. caddy uses pre-built image with baked Caddyfile (fixes volume mount issue)
+#   3. removed version: "3.9" (obsolete)
 
-# Removed: version (obsolete), fixed pg_isready healthcheck
-# version: "3.9"
-
-# ── Shared env anchors ─────────────────────────────────────────────────────────
 x-pg: &pg
   PG_HOST: postgres
   PG_PORT: "5432"
@@ -32,11 +19,9 @@ x-kafka: &kafka
 x-jwt: &jwt
   JWT_KEY: ${JWT_KEY}
 
-# ══════════════════════════════════════════════════════════════════════════════
-# INFRASTRUCTURE
-# ══════════════════════════════════════════════════════════════════════════════
-
 services:
+
+  # ── Infrastructure ────────────────────────────────────────────────────────
 
   postgres:
     image: postgres:15-alpine
@@ -45,11 +30,12 @@ services:
       POSTGRES_USER: langphy_admin
       POSTGRES_PASSWORD: ${PG_PASSWORD}
       POSTGRES_DB: langphy_auth
+      # ✅ Fix: use subdirectory so initdb doesn't see lost+found from Railway volume mount
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      # ✅ Fixed: added -d langphy_auth so pg_isready connects to the correct db
       test: ["CMD-SHELL", "pg_isready -U langphy_admin -d langphy_auth"]
       interval: 10s
       timeout: 5s
@@ -70,9 +56,7 @@ services:
     networks:
       - langphy
 
-# ══════════════════════════════════════════════════════════════════════════════
-# NODE.JS SERVICES — PostgreSQL
-# ══════════════════════════════════════════════════════════════════════════════
+  # ── PostgreSQL services ───────────────────────────────────────────────────
 
   auth:
     image: niloyrudra/auth
@@ -86,11 +70,6 @@ services:
       PG_DB: langphy_auth
       RESEND_API_KEY: ${RESEND_API_KEY}
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
-    # healthcheck:
-    #   test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
-    #   interval: 10s
-    #   timeout: 3s
-    #   retries: 5
     networks:
       - langphy
 
@@ -105,11 +84,6 @@ services:
       SERVICE_NAME: streaks-service
       PG_DB: langphy_streaks
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
-    # healthcheck:
-    #   test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
-    #   interval: 10s
-    #   timeout: 3s
-    #   retries: 5
     networks:
       - langphy
 
@@ -198,9 +172,7 @@ services:
     networks:
       - langphy
 
-# ══════════════════════════════════════════════════════════════════════════════
-# NODE.JS SERVICES — MongoDB Atlas
-# ══════════════════════════════════════════════════════════════════════════════
+  # ── MongoDB services ──────────────────────────────────────────────────────
 
   category:
     image: niloyrudra/category
@@ -266,9 +238,7 @@ services:
     networks:
       - langphy
 
-# ══════════════════════════════════════════════════════════════════════════════
-# PYTHON / AI SERVICES
-# ══════════════════════════════════════════════════════════════════════════════
+  # ── Python / AI services ──────────────────────────────────────────────────
 
   nlp:
     image: niloyrudra/nlp-service
@@ -289,7 +259,6 @@ services:
       WHISPER_COMPUTE_TYPE: int8
       WHISPER_NUM_WORKERS: "1"
       HF_HOME: /root/.cache/huggingface
-      HF_TOKEN: ${HF_TOKEN}
     volumes:
       - audio_tmp:/tmp
       - whisper_cache:/root/.cache/huggingface
@@ -312,7 +281,6 @@ services:
       WHISPER_COMPUTE_TYPE: int8
       WHISPER_NUM_WORKERS: "1"
       HF_HOME: /root/.cache/huggingface
-      HF_TOKEN: ${HF_TOKEN}
     volumes:
       - audio_tmp:/tmp
       - whisper_cache:/root/.cache/huggingface
@@ -322,23 +290,18 @@ services:
     networks:
       - langphy
 
-# ══════════════════════════════════════════════════════════════════════════════
-# REVERSE PROXY — Caddy
-# ══════════════════════════════════════════════════════════════════════════════
-
+  # ── Reverse proxy ─────────────────────────────────────────────────────────
+  # ✅ Fix: uses pre-built image with Caddyfile baked in
+  # No volume mount needed — Caddyfile is inside the image
+  # Build: docker build -t niloyrudra/caddy ./infra/caddy
+  # Push:  docker push niloyrudra/caddy
   caddy:
-    image: caddy:2-alpine
+    image: niloyrudra/caddy
     restart: unless-stopped
     ports:
-      # ✅ Changed 80/443 to 8080/8443 for local testing (avoids port conflict)
-      # On Railway these map correctly — Railway handles external 80/443
-      # Change back to "80:80" and "443:443" when deploying to Railway
-      # - "8080:80"
-      # - "8443:443"
-      - "80:80" #for Production
-      - "443:443" #for Production
+      - "80:80"
+      - "443:443"
     volumes:
-      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     networks:
@@ -355,3 +318,364 @@ volumes:
 networks:
   langphy:
     driver: bridge
+
+
+
+
+# # ═══════════════════════════════════════════════════════════════════════════════
+# # Langphy Backend — Production Docker Compose for Railway
+# # ═══════════════════════════════════════════════════════════════════════════════
+# #
+# # Kafka: Confluent Cloud (external managed service)
+# #   - No Kafka container needed
+# #   - KAFKA_BROKER, KAFKA_SASL_USERNAME, KAFKA_SASL_PASSWORD set via .env
+# #   - Uses SASL_PLAIN + TLS (standard Confluent Cloud connection)
+# #
+# # PostgreSQL: single container, 9 databases via init.sql
+# # Redis: container for speech service RQ queue
+# # MongoDB: Atlas (external, no change)
+# # Caddy: reverse proxy, auto HTTPS
+# # ═══════════════════════════════════════════════════════════════════════════════
+
+# # Removed: version (obsolete), fixed pg_isready healthcheck
+# # version: "3.9"
+
+# # ── Shared env anchors ─────────────────────────────────────────────────────────
+# x-pg: &pg
+#   PG_HOST: postgres
+#   PG_PORT: "5432"
+#   PG_USER: langphy_admin
+#   PG_PASSWORD: ${PG_PASSWORD}
+
+# x-kafka: &kafka
+#   KAFKA_BROKER: ${KAFKA_BROKER}
+#   KAFKA_SASL_USERNAME: ${KAFKA_SASL_USERNAME}
+#   KAFKA_SASL_PASSWORD: ${KAFKA_SASL_PASSWORD}
+#   KAFKAJS_NO_PARTITIONER_WARNING: "1"
+
+# x-jwt: &jwt
+#   JWT_KEY: ${JWT_KEY}
+
+# # ══════════════════════════════════════════════════════════════════════════════
+# # INFRASTRUCTURE
+# # ══════════════════════════════════════════════════════════════════════════════
+
+# services:
+
+#   postgres:
+#     image: postgres:15-alpine
+#     restart: unless-stopped
+#     environment:
+#       POSTGRES_USER: langphy_admin
+#       POSTGRES_PASSWORD: ${PG_PASSWORD}
+#       POSTGRES_DB: langphy_auth
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+#       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+#     healthcheck:
+#       # ✅ Fixed: added -d langphy_auth so pg_isready connects to the correct db
+#       test: ["CMD-SHELL", "pg_isready -U langphy_admin -d langphy_auth"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+#     networks:
+#       - langphy
+
+#   redis:
+#     image: redis:7-alpine
+#     restart: unless-stopped
+#     volumes:
+#       - redis_data:/data
+#     healthcheck:
+#       test: ["CMD", "redis-cli", "ping"]
+#       interval: 5s
+#       timeout: 3s
+#       retries: 5
+#     networks:
+#       - langphy
+
+# # ══════════════════════════════════════════════════════════════════════════════
+# # NODE.JS SERVICES — PostgreSQL
+# # ══════════════════════════════════════════════════════════════════════════════
+
+#   auth:
+#     image: niloyrudra/auth
+#     restart: unless-stopped
+#     depends_on:
+#       postgres:
+#         condition: service_healthy
+#     environment:
+#       <<: [*pg, *kafka, *jwt]
+#       SERVICE_NAME: auth-service
+#       PG_DB: langphy_auth
+#       RESEND_API_KEY: ${RESEND_API_KEY}
+#     command: sh -c "node dist/db/migrate.js && node dist/index.js"
+#     # healthcheck:
+#     #   test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+#     #   interval: 10s
+#     #   timeout: 3s
+#     #   retries: 5
+#     networks:
+#       - langphy
+
+#   streaks:
+#     image: niloyrudra/streaks
+#     restart: unless-stopped
+#     depends_on:
+#       postgres:
+#         condition: service_healthy
+#     environment:
+#       <<: [*pg, *kafka, *jwt]
+#       SERVICE_NAME: streaks-service
+#       PG_DB: langphy_streaks
+#     command: sh -c "node dist/db/migrate.js && node dist/index.js"
+#     # healthcheck:
+#     #   test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+#     #   interval: 10s
+#     #   timeout: 3s
+#     #   retries: 5
+#     networks:
+#       - langphy
+
+#   progress:
+#     image: niloyrudra/progress
+#     restart: unless-stopped
+#     depends_on:
+#       postgres:
+#         condition: service_healthy
+#     environment:
+#       <<: [*pg, *kafka, *jwt]
+#       SERVICE_NAME: progress-service
+#       PG_DB: langphy_progress
+#     command: sh -c "node dist/db/migrate.js && node dist/index.js"
+#     networks:
+#       - langphy
+
+#   performance:
+#     image: niloyrudra/performance
+#     restart: unless-stopped
+#     depends_on:
+#       postgres:
+#         condition: service_healthy
+#     environment:
+#       <<: [*pg, *kafka, *jwt]
+#       SERVICE_NAME: performance-service
+#       PG_DB: langphy_performance
+#     command: sh -c "node dist/db/migrate.js && node dist/index.js"
+#     networks:
+#       - langphy
+
+#   profile:
+#     image: niloyrudra/profile
+#     restart: unless-stopped
+#     depends_on:
+#       postgres:
+#         condition: service_healthy
+#     environment:
+#       <<: [*pg, *kafka, *jwt]
+#       SERVICE_NAME: profile-service
+#       PG_DB: langphy_profile
+#     command: sh -c "node dist/db/migrate.js && node dist/index.js"
+#     networks:
+#       - langphy
+
+#   settings:
+#     image: niloyrudra/settings
+#     restart: unless-stopped
+#     depends_on:
+#       postgres:
+#         condition: service_healthy
+#     environment:
+#       <<: [*pg, *kafka, *jwt]
+#       SERVICE_NAME: settings-service
+#       PG_DB: langphy_settings
+#     command: sh -c "node dist/db/migrate.js && node dist/index.js"
+#     networks:
+#       - langphy
+
+#   notification:
+#     image: niloyrudra/notification
+#     restart: unless-stopped
+#     depends_on:
+#       postgres:
+#         condition: service_healthy
+#     environment:
+#       <<: [*pg, *kafka, *jwt]
+#       SERVICE_NAME: notification-service
+#       PG_DB: langphy_notification
+#     command: sh -c "node dist/db/migrate.js && node dist/index.js"
+#     networks:
+#       - langphy
+
+#   gateway:
+#     image: niloyrudra/gateway-service
+#     restart: unless-stopped
+#     depends_on:
+#       postgres:
+#         condition: service_healthy
+#     environment:
+#       <<: [*pg, *kafka, *jwt]
+#       SERVICE_NAME: gateway-service
+#       NODE_ENV: production
+#       PG_DB: langphy_gateway
+#     command: sh -c "node dist/db/migrate.js && node dist/index.js"
+#     networks:
+#       - langphy
+
+# # ══════════════════════════════════════════════════════════════════════════════
+# # NODE.JS SERVICES — MongoDB Atlas
+# # ══════════════════════════════════════════════════════════════════════════════
+
+#   category:
+#     image: niloyrudra/category
+#     restart: unless-stopped
+#     environment:
+#       CATEGORY_MONGO_URI: ${MONGO_URI}
+#     networks:
+#       - langphy
+
+#   unit:
+#     image: niloyrudra/unit
+#     restart: unless-stopped
+#     environment:
+#       UNIT_MONGO_URI: ${MONGO_URI}
+#     networks:
+#       - langphy
+
+#   practice:
+#     image: niloyrudra/practice
+#     restart: unless-stopped
+#     environment:
+#       PRACTICE_MONGO_URI: ${MONGO_URI}
+#     networks:
+#       - langphy
+
+#   quiz:
+#     image: niloyrudra/quiz
+#     restart: unless-stopped
+#     environment:
+#       QUIZ_MONGO_URI: ${MONGO_URI}
+#     networks:
+#       - langphy
+
+#   speaking:
+#     image: niloyrudra/speaking
+#     restart: unless-stopped
+#     environment:
+#       SPEAKING_MONGO_URI: ${MONGO_URI}
+#     networks:
+#       - langphy
+
+#   reading:
+#     image: niloyrudra/reading
+#     restart: unless-stopped
+#     environment:
+#       READING_MONGO_URI: ${MONGO_URI}
+#     networks:
+#       - langphy
+
+#   writing:
+#     image: niloyrudra/writing
+#     restart: unless-stopped
+#     environment:
+#       WRITING_MONGO_URI: ${MONGO_URI}
+#     networks:
+#       - langphy
+
+#   listening:
+#     image: niloyrudra/listening
+#     restart: unless-stopped
+#     environment:
+#       LISTENING_MONGO_URI: ${MONGO_URI}
+#     networks:
+#       - langphy
+
+# # ══════════════════════════════════════════════════════════════════════════════
+# # PYTHON / AI SERVICES
+# # ══════════════════════════════════════════════════════════════════════════════
+
+#   nlp:
+#     image: niloyrudra/nlp-service
+#     restart: unless-stopped
+#     networks:
+#       - langphy
+
+#   speech-api:
+#     image: niloyrudra/speech-service
+#     restart: unless-stopped
+#     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+#     environment:
+#       REDIS_HOST: redis
+#       REDIS_PORT: "6379"
+#       NLP_SERVICE_URL: http://nlp:8000
+#       WHISPER_MODEL_SIZE: small
+#       WHISPER_DEVICE: cpu
+#       WHISPER_COMPUTE_TYPE: int8
+#       WHISPER_NUM_WORKERS: "1"
+#       HF_HOME: /root/.cache/huggingface
+#       HF_TOKEN: ${HF_TOKEN}
+#     volumes:
+#       - audio_tmp:/tmp
+#       - whisper_cache:/root/.cache/huggingface
+#     depends_on:
+#       redis:
+#         condition: service_healthy
+#     networks:
+#       - langphy
+
+#   speech-worker:
+#     image: niloyrudra/speech-service
+#     restart: unless-stopped
+#     command: ["python", "app/worker.py"]
+#     environment:
+#       REDIS_HOST: redis
+#       REDIS_PORT: "6379"
+#       NLP_SERVICE_URL: http://nlp:8000
+#       WHISPER_MODEL_SIZE: small
+#       WHISPER_DEVICE: cpu
+#       WHISPER_COMPUTE_TYPE: int8
+#       WHISPER_NUM_WORKERS: "1"
+#       HF_HOME: /root/.cache/huggingface
+#       HF_TOKEN: ${HF_TOKEN}
+#     volumes:
+#       - audio_tmp:/tmp
+#       - whisper_cache:/root/.cache/huggingface
+#     depends_on:
+#       redis:
+#         condition: service_healthy
+#     networks:
+#       - langphy
+
+# # ══════════════════════════════════════════════════════════════════════════════
+# # REVERSE PROXY — Caddy
+# # ══════════════════════════════════════════════════════════════════════════════
+
+#   caddy:
+#     image: caddy:2-alpine
+#     restart: unless-stopped
+#     ports:
+#       # ✅ Changed 80/443 to 8080/8443 for local testing (avoids port conflict)
+#       # On Railway these map correctly — Railway handles external 80/443
+#       # Change back to "80:80" and "443:443" when deploying to Railway
+#       # - "8080:80"
+#       # - "8443:443"
+#       - "80:80" #for Production
+#       - "443:443" #for Production
+#     volumes:
+#       - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+#       - caddy_data:/data
+#       - caddy_config:/config
+#     networks:
+#       - langphy
+
+# volumes:
+#   postgres_data:
+#   redis_data:
+#   audio_tmp:
+#   whisper_cache:
+#   caddy_data:
+#   caddy_config:
+
+# networks:
+#   langphy:
+#     driver: bridge

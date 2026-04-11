@@ -5,7 +5,6 @@ import { connectMongo } from "./db/index.js";
 import { quizRouter } from "./routes/quiz.route.js";
 const { json } = pkg;
 
-
 const app = express();
 
 // app.use(cors());
@@ -16,5 +15,5 @@ app.use( quizRouter );
 
 connectMongo();
 
-const PORT = 4003;
-app.listen( PORT, () => console.log( `Quiz service listening on port ${PORT}.` ) );
+const PORT: number = parseInt(process.env.PORT || "4003", 10);
+app.listen( PORT, '::', () => console.log( `Quiz service listening on port ${PORT}.` ) );

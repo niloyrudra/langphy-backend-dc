@@ -14,11 +14,11 @@ app.use( json() );
 app.use( unitRouter );
 
 // app.all( "*", async ( req, res ) => { throw new Error("404!") } );
-app.all("*", (req, res) => {
+app.all("*", (_req, res) => {
   res.status(404).json({ error: "Not Found" });
 });
 
 connectMongo();
 
-const PORT = 4001;
-app.listen( PORT, () => console.log( `Unit service listening on port ${PORT}.` ) );
+const PORT: number = parseInt(process.env.PORT || "4001", 10);
+app.listen( PORT, '::', () => console.log( `Unit service listening on port ${PORT}.` ) );
