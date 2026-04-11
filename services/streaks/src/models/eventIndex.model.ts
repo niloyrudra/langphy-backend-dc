@@ -35,7 +35,7 @@ export class EventIndexModel {
                     user_id,
                     occurred_at,
                     payload
-                ) VALUES (?, ?, ?, ?, ?, ?)`,
+                ) VALUES ($1, $2, $3, $4, $5, $6)`,
                 [
                     input.event_id,
                     input.event_type,
