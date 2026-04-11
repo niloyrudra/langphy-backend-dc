@@ -1,9 +1,3 @@
-// Fixes:
-//   1. Removed allowAutoTopicCreation: false (causes issues with Confluent Basic)
-//   2. Removed idempotent: true (requires acks=-1 which isn't in ProducerConfig)
-//   3. Removed dead event types from resolveTopic (progress.updated, performance.updated)
-//   4. acks: -1 moved to individual send() calls where needed
-
 import { TOPICS, type BaseEvent } from "@langphy/shared";
 import { kafka } from "./kafka.client.js";
 

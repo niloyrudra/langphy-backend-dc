@@ -1,18 +1,21 @@
 import { handleSessionCompleted } from "../services/performance.service.js";
 import { EventIndexModel } from "../models/eventIndex.model.js";
 import { kafka } from "./kafka.client.js";
-import { SessionCompletedEventSchema, TOPICS, UserDeletedEventSchema } from "@langphy/shared";
+import { connectWithRetry, SessionCompletedEventSchema, TOPICS, UserDeletedEventSchema } from "@langphy/shared";
 // import { producer } from "./producer.js";
 import { SessionPerformanceRepo } from "../repos/sessionPerformance.repo.js";
 import { SessionAttemptRepo } from "../repos/attempt.repo.js";
 import { DeletedUsersRepo } from "../repos/deleted-users.repo.js";
 
-const consumer = kafka.consumer({
-    groupId: `${process.env.SERVICE_NAME}-group`
+const serviceName = process.env.SERVICE_NAME! ? process.env.SERVICE_NAME : 'performance-service';
+const consumerGroupId = serviceName + '-group';
+export const consumer = kafka.consumer({
+    groupId: consumerGroupId
 });
 
 export const initConsumer = async () => {
-    await consumer.connect();
+    // await consumer.connect();
+    await connectWithRetry(consumer, serviceName);
     
     await consumer.subscribe({
         topic: TOPICS.SESSION_COMPLETED,

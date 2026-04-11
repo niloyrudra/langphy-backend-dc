@@ -1,16 +1,19 @@
-import { LessonCompletedEventSchema, TOPICS, UserDeletedEventSchema } from "@langphy/shared";
+import { connectWithRetry, LessonCompletedEventSchema, TOPICS, UserDeletedEventSchema } from "@langphy/shared";
 import { kafka } from "./kafka.client.js"
 import { EventIndexModel } from "../models/eventIndex.model.js";
 import { producer } from "./producer.js";
 import { ProgressRepo } from "../repos/progress.repo.js";
 import { DeletedUsersRepo } from "../repos/deleted-users.repo.js";
 
-const consumer = kafka.consumer({
-    groupId: process.env.SERVICE_NAME + '-group'
+const serviceName = process.env.SERVICE_NAME! ? process.env.SERVICE_NAME : 'progress-service';
+const consumerGroupId = serviceName + '-group';
+export const consumer = kafka.consumer({
+    groupId: consumerGroupId
 });
 
 export const initConsumer = async () => {
-    await consumer.connect();
+    // await consumer.connect();
+    await connectWithRetry(consumer, serviceName);
 
     await consumer.subscribe({
         topic: TOPICS.LESSON_COMPLETED,

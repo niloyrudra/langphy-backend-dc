@@ -1,15 +1,18 @@
 import { kafka } from "./kafka.client.js";
 import { ProfileModel } from "../models/profile.model.js";
-import { TOPICS, UserDeletedEventSchema, UserRegisteredEventSchema } from "@langphy/shared";
+import { connectWithRetry, TOPICS, UserDeletedEventSchema, UserRegisteredEventSchema } from "@langphy/shared";
 import { EventIndexModel } from "../models/eventIndex.model.js";
 import { DeletedUsersRepo } from "../repos/deleted-users.repo.js";
 
-const consumer = kafka.consumer({
-    groupId: process.env.SERVICE_NAME! + '-group'
+const serviceName = process.env.SERVICE_NAME! ? process.env.SERVICE_NAME : 'profile-service';
+const consumerGroupId = serviceName + '-group';
+export const consumer = kafka.consumer({
+    groupId: consumerGroupId
 });
 
 export const startProfileConsumers = async () => {
-    await consumer.connect();
+    // await consumer.connect();
+    await connectWithRetry(consumer, serviceName);
 
     await consumer.subscribe({
         topic: TOPICS.USER_REGISTERED,

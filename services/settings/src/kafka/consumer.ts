@@ -1,18 +1,22 @@
 import { kafka } from "./kafka.client.js"
 import { SettingsModel } from "../models/settings.model.js";
-import { SettingsUpdatedEventSchema, TOPICS, UserDeletedEventSchema, UserRegisteredEventSchema } from "@langphy/shared";
+import { connectWithRetry, SettingsUpdatedEventSchema, TOPICS, UserDeletedEventSchema, UserRegisteredEventSchema } from "@langphy/shared";
 import { EventIndexModel } from "../models/eventIndex.model.js";
 import { DeletedUsersRepo } from "../repos/deleted-users.repo.js";
 
-const consumer = kafka.consumer({
-    groupId: process.env.SERVICE_NAME! + "-group"
+const serviceName = process.env.SERVICE_NAME! ? process.env.SERVICE_NAME : 'settings-service';
+const consumerGroupId = serviceName + '-group';
+export const consumer = kafka.consumer({
+    groupId: consumerGroupId
 });
 
 export const initSettingsConsumers = async () => {
-    await consumer.connect();
+    // await consumer.connect();
+    await connectWithRetry( consumer, serviceName );
 
     await consumer.subscribe({
-        topic: TOPICS.USER_REGISTERED
+        topic: TOPICS.USER_REGISTERED,
+        fromBeginning: true
     });
 
     // await consumer.subscribe({
@@ -49,7 +53,7 @@ export const initSettingsConsumers = async () => {
 
                 try {
                     if ( await EventIndexModel.exists( event.event_id ) ) return;
-                    if( await DeletedUsersRepo.exists(event.user_id) ) return;
+                    if( await DeletedUsersRepo.exists( event.user_id ) ) return;
 
                     const settings = await SettingsModel.updateSettings(
                         event.user_id,
@@ -99,7 +103,7 @@ export const initSettingsConsumers = async () => {
                         console.log("Settings already exist for:", event.user_id);
                         return;
                     }
-                    if( await DeletedUsersRepo.exists(event.user_id) ) return;
+                    if( await DeletedUsersRepo.exists( event.user_id) ) return;
 
                     const settings = await SettingsModel.createSettingsIfNotExists(event.user_id);
                     if (settings) {

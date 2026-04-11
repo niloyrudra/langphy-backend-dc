@@ -1,17 +1,20 @@
 import { v4 as uuid } from "uuid";
 import { kafka } from "./kafka.client.js";
 import { producer } from "./producer.js";
-import { SessionCompletedEventSchema, TOPICS, UserDeletedEventSchema } from "@langphy/shared";
+import { connectWithRetry, SessionCompletedEventSchema, TOPICS, UserDeletedEventSchema } from "@langphy/shared";
 import { EventIndexModel } from "../models/eventIndex.model.js";
 import { StreakRepo } from "../repos/streaks.repo.js";
 import { DeletedUsersRepo } from "../repos/deleted-users.repo.js";
 
+const serviceName = process.env.SERVICE_NAME! ? process.env.SERVICE_NAME : 'streaks-service';
+const consumerGroupId = serviceName + '-group';
 export const consumer = kafka.consumer({
-    groupId: process.env.SERVICE_NAME + '-group'
+    groupId: consumerGroupId
 });
 
 export const initConsumer = async () => {
-    await consumer.connect();
+    // await consumer.connect();
+    await connectWithRetry( consumer, serviceName );
 
     await consumer.subscribe({
         topic: TOPICS.SESSION_COMPLETED,
@@ -34,7 +37,7 @@ export const initConsumer = async () => {
 
                 // 1️⃣ Idempotency
                 if( await EventIndexModel.exists( event.event_id ) ) return;
-                if( await DeletedUsersRepo.exists( event.event_id ) ) return;
+                if( await DeletedUsersRepo.exists( event.user_id ) ) return;
 
                 // 2️⃣ Apply streak logic
                 const result = await StreakRepo.applyActivity({ userId: event.user_id });

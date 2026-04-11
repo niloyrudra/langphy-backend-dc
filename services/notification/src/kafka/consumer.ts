@@ -1,15 +1,19 @@
 // import { AchievementUnlockedEventSchema, LessonCompletedEventSchema, ReminderTriggeredEventSchema, SessionCompletedEventSchema, StreakUpdatedEventSchema, TOPICS, UserDeletedEventSchema, UserRegisteredEventSchema } from "@langphy/shared";
-import { LessonCompletedEventSchema, ReminderTriggeredEventSchema, SessionCompletedEventSchema, StreakUpdatedEventSchema, TOPICS, UserDeletedEventSchema, UserRegisteredEventSchema } from "@langphy/shared";
+import { connectWithRetry, LessonCompletedEventSchema, ReminderTriggeredEventSchema, SessionCompletedEventSchema, StreakUpdatedEventSchema, TOPICS, UserDeletedEventSchema, UserRegisteredEventSchema } from "@langphy/shared";
 import { kafka } from "./kafka.client.js"
 import { EventIndexModel } from "../models/eventIndex.model.js";
 import { topicHandlerMap } from "../application/handle.registery.js";
+import { DeletedUsersRepo } from "../repos/deleted-users.repo.js";
 
-const consumer = kafka.consumer({
-    groupId: process.env.SERVICE_NAME + '-group'
+const serviceName = process.env.SERVICE_NAME! ? process.env.SERVICE_NAME : 'notification-service';
+const consumerGroupId = serviceName + '-group';
+export const consumer = kafka.consumer({
+    groupId: consumerGroupId
 });
 
 export const initConsumer = async () => {
-    await consumer.connect();
+    // await consumer.connect();
+    await connectWithRetry(consumer, serviceName);
 
     await consumer.subscribe({
         topic: TOPICS.USER_REGISTERED,
@@ -45,7 +49,6 @@ export const initConsumer = async () => {
         fromBeginning: false
     });
 
-
     await consumer.run({
         eachMessage: async ({ topic, message }) => {
             if (!message.value) return;
@@ -55,6 +58,7 @@ export const initConsumer = async () => {
             try {
                 // 1️⃣ Idempotency first
                 if (await EventIndexModel.exists(raw.event_id)) return;
+                if (await DeletedUsersRepo.exists(raw.user_id)) return;
 
                 let event: any;
 
@@ -97,5 +101,4 @@ export const initConsumer = async () => {
             }
         }
     });
-
 }
