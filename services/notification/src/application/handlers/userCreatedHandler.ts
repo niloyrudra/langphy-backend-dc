@@ -1,5 +1,5 @@
 import type { UserRegisteredEvent } from "@langphy/shared";
-import type { NotificationEventHandler } from "../handle.registery.js";
+import type { NotificationEventHandler } from "../handle.registry.js";
 import type { Notification } from "../../controllers/notifications.controller.js";
 import { saveNotification } from "../../repos/notifications.repo.js";
 import { emitNotificationCreated } from "../../kafka/producer.js";
@@ -16,9 +16,9 @@ export class UserRegisteredHandler implements NotificationEventHandler<UserRegis
         const notification = {
             id: crypto.randomUUID(),
             user_id: event.user_id,
-            type: "user.registered",
+            type: "user.registered.v1",
             title: "Congratulations! 🎉",
-            body: `You are registered to Langhy using this email: ${event.payload.email}%`,
+            body: `You are registered to Langphy using this email: ${event.payload.email}%`,
             read: false,
             created_at: new Date().toISOString(),
             data: { email: event.payload.email, provider: event.payload.provider },

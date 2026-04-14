@@ -98,7 +98,7 @@ export const initSettingsConsumers = async () => {
                 try {
                     if ( await EventIndexModel.exists( event.event_id ) ) return;
 
-                    const exists = await SettingsModel.settingsIfNotExists(event.user_id);
+                    const exists = await SettingsModel.getSettings(event.user_id);
                     if (exists) {
                         console.log("Settings already exist for:", event.user_id);
                         return;

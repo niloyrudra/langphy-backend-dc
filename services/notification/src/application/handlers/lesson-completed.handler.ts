@@ -1,5 +1,5 @@
 import type { LessonCompletedEvent } from "@langphy/shared";
-import type { NotificationEventHandler } from "../handle.registery.js";
+import type { NotificationEventHandler } from "../handle.registry.js";
 import type { Notification } from "../../controllers/notifications.controller.js";
 import { saveNotification } from "../../repos/notifications.repo.js";
 import { emitNotificationCreated } from "../../kafka/producer.js";
@@ -20,7 +20,7 @@ export class LessonCompletedHandler implements NotificationEventHandler<LessonCo
         const notification = {
             id: crypto.randomUUID(),
             user_id: event.user_id,
-            type: "lesson.completed",
+            type: "lesson.completed.v1",
             title: "Lesson Completed 🎉",
             body: `You scored ${event.payload.score}%`,
             read: false,

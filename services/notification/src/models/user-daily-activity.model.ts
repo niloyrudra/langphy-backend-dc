@@ -7,8 +7,7 @@ export class UserDailyActivityModel {
       `SELECT * FROM lp_user_daily_activity WHERE user_id = $1`,
       [userId]
     );
-
-    return result.rows.map(r => r.token);
+    return result.rows;
   }
 
   static async upsertUserDailyActivity(userId: string) {
@@ -17,7 +16,7 @@ export class UserDailyActivityModel {
       INSERT INTO lp_user_daily_activity (user_id, last_activity_date)
       VALUES ($1, CURRENT_DATE)
       ON CONFLICT (user_id)
-      DO UPDATE SET last_activity_date = CURRENT_DATE,
+      DO UPDATE SET last_activity_date = CURRENT_DATE
       `,
       [userId]
     );
@@ -25,11 +24,8 @@ export class UserDailyActivityModel {
 
   static async deleteUserDailyActivity(userId: string) {
     await pgPool.query(
-      `
-      DELETE FROM lp_user_daily_activity WHERE user_id = $1
-      `,
+      `DELETE FROM lp_user_daily_activity WHERE user_id = $1`,
       [userId]
     );
   }
-
 }

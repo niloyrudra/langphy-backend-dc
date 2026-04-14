@@ -6,6 +6,7 @@ import pkg from "body-parser";
 import { dbRouter } from "./routes/db-route.js";
 import { initConsumer } from "./kafka/consumer.js";
 import { initProducer } from "./kafka/producer.js";
+import { VocabularyRouter } from "./routes/vocabulary.route.js";
 const {json} = pkg;
 // import cors from 'cors';
 
@@ -15,6 +16,7 @@ app.use( json() );
 
 app.use( dbRouter );
 app.use( ProgressRouter );
+app.use( VocabularyRouter );
 
 app.use( errorHandler );
 

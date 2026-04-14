@@ -1,5 +1,5 @@
 import type { UserDeletedEvent } from "@langphy/shared";
-import type { NotificationEventHandler } from "../handle.registery.js";
+import type { NotificationEventHandler } from "../handle.registry.js";
 import { deleteNotification } from "../../repos/notifications.repo.js";
 import { deleteUserActivity } from "../../repos/user-daily-activity.repo.js";
 import { deleteDeviceToken } from "../../repos/device-token.repo.js";

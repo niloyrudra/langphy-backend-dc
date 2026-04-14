@@ -14,7 +14,7 @@ def word_confidence( prob: float ) -> WordConfidence:
     if prob >= 0.95:
         return {
             "key": "excellent",
-            "score": 95,
+            "score": "95",
             "label": "Excellent",
             "color": "#16a34a"   # green
         }
@@ -22,7 +22,7 @@ def word_confidence( prob: float ) -> WordConfidence:
     if prob >= 0.85:
         return {
             "key": "very_good",
-            "score": 85,
+            "score": "85",
             "label": "Very good",
             "color": "#22c55e"
         }
@@ -30,7 +30,7 @@ def word_confidence( prob: float ) -> WordConfidence:
     if prob >= 0.75:
         return {
             "key": "good",
-            "score": 75,
+            "score": "75",
             "label": "Good",
             "color": "#84cc16"
         }
@@ -38,7 +38,7 @@ def word_confidence( prob: float ) -> WordConfidence:
     if prob >= 0.65:
         return {
             "key": "fair",
-            "score": 65,
+            "score": "65",
             "label": "Needs work",
             "color": "#facc15"
         }
@@ -46,14 +46,14 @@ def word_confidence( prob: float ) -> WordConfidence:
     if prob >= 0.50:
         return {
             "key": "weak",
-            "score": 50,
+            "score": "50",
             "label": "Hard to understand",
             "color": "#fb923c"
         }
 
     return {
         "key": "very_weak",
-        "score": 30,
+        "score": "30",
         "label": "Unclear",
         "color": "#ef4444"
     }

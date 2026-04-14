@@ -2,7 +2,7 @@
 import { connectWithRetry, LessonCompletedEventSchema, ReminderTriggeredEventSchema, SessionCompletedEventSchema, StreakUpdatedEventSchema, TOPICS, UserDeletedEventSchema, UserRegisteredEventSchema } from "@langphy/shared";
 import { kafka } from "./kafka.client.js"
 import { EventIndexModel } from "../models/eventIndex.model.js";
-import { topicHandlerMap } from "../application/handle.registery.js";
+import { topicHandlerMap } from "../application/handle.registry.js";
 import { DeletedUsersRepo } from "../repos/deleted-users.repo.js";
 
 const serviceName = process.env.SERVICE_NAME! ? process.env.SERVICE_NAME : 'notification-service';

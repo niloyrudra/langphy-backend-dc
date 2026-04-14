@@ -1,6 +1,6 @@
 import Express from "express";
 import "express-async-errors";
-import { SettingsRouter } from "./routes/settings.js";
+import { SettingsRouter } from "./routes/settings.route.js";
 import { errorHandler } from "./middlewares/error-handler.js";
 import pkg from "body-parser";
 import { dbRouter } from "./routes/db-route.js";

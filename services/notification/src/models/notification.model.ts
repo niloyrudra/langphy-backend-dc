@@ -25,7 +25,7 @@ export class NotificationModel {
                     read = EXCLUDED.read OR lp_notifications.read,
                     data = EXCLUDED.data,
                     created_at = now()
-                RETURNING *;
+                RETURNING *
                 `,
                 [
                     data.user_id,
