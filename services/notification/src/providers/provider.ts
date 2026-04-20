@@ -9,7 +9,7 @@ export interface PushProvider {
         tokens: string[],
         payload: {
             title: string,
-            bosy: string,
+            body: string,
             data: Record<string, any>
         }
     ): Promise<PushResult>

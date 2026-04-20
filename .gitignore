@@ -24,6 +24,7 @@ build/
 **/*postgres-secrets*.yaml
 !**/*.example.yaml
 **/*de_en_dict.json
+**/*de_en_dict*.json
 
 # OS / IDE
 .DS_Store
