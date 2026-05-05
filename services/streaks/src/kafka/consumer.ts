@@ -33,54 +33,61 @@ export const initConsumer = async () => {
             const raw = JSON.parse( message.value!.toString() );
 
             if ( topic === TOPICS.SESSION_COMPLETED ) {
-                const event = SessionCompletedEventSchema.parse( raw );
-
-                // 1️⃣ Idempotency
-                if( await EventIndexModel.exists( event.event_id ) ) return;
-                if( await DeletedUsersRepo.exists( event.user_id ) ) return;
-
-                // 2️⃣ Apply streak logic
-                const result = await StreakRepo.applyActivity({ userId: event.user_id });
-
-                // 3️⃣ Emit only if something changed
-                if( result.updated ) {
-                    await producer.send({
-                        topic: TOPICS.STREAK_UPDATED,
-                        messages: [
-                            {
-                                key: event.user_id,
-                                value: JSON.stringify({
-                                    event_type: "streak.updated.v1",
-                                    event_id: uuid(),
-                                    event_version: 1,
-                                    user_id: event.user_id,
-                                    occurred_at: event.occurred_at,
-                                    payload: {
-                                        current_streak: result.currentStreak,
-                                        longest_streak: result.longestStreak,
-                                        last_activity_date: result.lastActivityDate,
-                                        celebration: result.celebration,
-                                    },
-                                }),
-                            },
-                        ],
+                try {
+                    const event = SessionCompletedEventSchema.parse( raw );
+                    // 1️⃣ Idempotency
+                    if( await EventIndexModel.exists( event.event_id ) ) return;
+                    if( await DeletedUsersRepo.exists( event.user_id ) ) return;
+                    
+                    // 2️⃣ Apply streak logic
+                    const result = await StreakRepo.applyActivity({ userId: event.user_id });
+    
+                    // 3️⃣ Emit only if something changed
+                    if( result.updated ) {
+                        await producer.send({
+                            topic: TOPICS.STREAK_UPDATED,
+                            messages: [
+                                {
+                                    key: event.user_id,
+                                    value: JSON.stringify({
+                                        event_type: "streak.updated.v1",
+                                        event_id: uuid(),
+                                        event_version: 1,
+                                        user_id: event.user_id,
+                                        occurred_at: event.occurred_at,
+                                        payload: {
+                                            current_streak: result.currentStreak,
+                                            longest_streak: result.longestStreak,
+                                            last_activity_date: result.lastActivityDate,
+                                            celebration: result.celebration,
+                                        },
+                                    }),
+                                },
+                            ],
+                        });
+                    }
+    
+                    // 4️⃣ Mark inbox
+                    await EventIndexModel.markProcessed({
+                        event_id: event.event_id,
+                        event_type: event.event_type,
+                        event_version: event.event_version,
+                        user_id: event.user_id,
+                        occurred_at: event?.occurred_at ?? new Date().toISOString(),
+                        payload: event
                     });
                 }
-
-                // 4️⃣ Mark inbox
-                await EventIndexModel.markProcessed({
-                    event_id: event.event_id,
-                    event_type: event.event_type,
-                    event_version: event.event_version,
-                    user_id: event.user_id,
-                    occurred_at: event?.occurred_at ?? new Date().toISOString(),
-                    payload: event
-                });
+                catch(error) {
+                    // Log and skip — don't rethrow, so KafkaJS commits the offset
+                    // and moves on instead of retrying the same bad message forever
+                    console.error(`[Consumer] Skipping bad message on topic ${topic}:`, error);
+                    // Optionally write to a dead letter log for later inspection
+                }
             }
 
             if ( topic === TOPICS.USER_DELETED ) {
-                const event = UserDeletedEventSchema.parse( raw );
                 try {
+                    const event = UserDeletedEventSchema.parse( raw );
                     if ( await EventIndexModel.exists( event.event_id ) ) return;
 
                     await DeletedUsersRepo.insert( event.user_id );
@@ -89,8 +96,11 @@ export const initConsumer = async () => {
 
                     console.log( "🗑 Streak deleted for:", event.user_id );
                 }
-                catch(err) {
-                    console.error( "Streak deletion failed:", err );
+                catch(error) {
+                    // Log and skip — don't rethrow, so KafkaJS commits the offset
+                    // and moves on instead of retrying the same bad message forever
+                    console.error(`[Consumer] Skipping bad message on topic ${topic}:`, error);
+                    // Optionally write to a dead letter log for later inspection
                 }
             }
             

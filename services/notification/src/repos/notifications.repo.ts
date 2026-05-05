@@ -3,7 +3,7 @@ import type { Notification } from "../controllers/notifications.controller.js";
 
 export const saveNotification = async (notification: Notification) => {
     try {
-        await NotificationModel.upsertNotification(notification);
+        await NotificationModel.insertNotification(notification);
     }
     catch(error) {
         console.error("saveNotification error:", error);

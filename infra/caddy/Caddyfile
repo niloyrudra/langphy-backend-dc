@@ -29,9 +29,12 @@
         reverse_proxy {$AUTH_HOST}:{$AUTH_PORT}
     }
 
-    handle /api/events/* {
+    handle /api/events* {
         reverse_proxy {$GATEWAY_HOST}:{$GATEWAY_PORT}
     }
+    # handle /api/events/* {
+    #     reverse_proxy {$GATEWAY_HOST}:{$GATEWAY_PORT}
+    # }
 
     handle /api/streaks/* {
         reverse_proxy {$STREAKS_HOST}:{$STREAKS_PORT}

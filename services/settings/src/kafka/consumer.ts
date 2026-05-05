@@ -79,8 +79,11 @@ export const initSettingsConsumers = async () => {
 
                     await EventIndexModel.markProcessed( event );
 
-                } catch (err) {
-                    console.error("Settings update failed:", err);
+                } catch (error) {
+                    // Log and skip — don't rethrow, so KafkaJS commits the offset
+                    // and moves on instead of retrying the same bad message forever
+                    console.error(`[Settings Consumer] Skipping bad message on topic ${topic}:`, error);
+                    // Optionally write to a dead letter log for later inspection
                 }
             }
 
@@ -114,14 +117,14 @@ export const initSettingsConsumers = async () => {
 
                     await EventIndexModel.markProcessed( event );
 
-                } catch (err) {
-                    console.error("Settings creation failed:", err);
+                } catch (error) {
+                    console.error(`[Settings Consumer] Settings creation failed for user ${event.user_id}:`, error);
                 }
             }
 
             if ( topic === TOPICS.USER_DELETED ) {
-                const event = UserDeletedEventSchema.parse( raw );
                 try {
+                    const event = UserDeletedEventSchema.parse( raw );
                     if ( await EventIndexModel.exists( event.event_id ) ) return;
 
                     await DeletedUsersRepo.insert(event.user_id);
@@ -132,8 +135,8 @@ export const initSettingsConsumers = async () => {
 
                     console.log( "🗑 Settings deleted for:", event.user_id );
                 }
-                catch(err) {
-                    console.error( "Settings deletion failed:", err );
+                catch(error) {
+                    console.error( `[Settings Consumer] Settings deletion failed for user ${raw.user_id}:`, error );
                 }
             }
 

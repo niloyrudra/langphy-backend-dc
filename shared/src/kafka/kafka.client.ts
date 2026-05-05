@@ -11,28 +11,29 @@ import { Kafka, type KafkaConfig } from "kafkajs";
 
 export const createKafkaClient = (serviceName?: string): Kafka => {
     // const broker = process.env.KAFKA_BROKER || "kafka-srv:9092";
-    const broker = process.env.KAFKA_BROKER!;
-    const username = process.env.KAFKA_SASL_USERNAME;
-    const password = process.env.KAFKA_SASL_PASSWORD;
+    // const broker = process.env.KAFKA_BROKER!;
+    // const username = process.env.KAFKA_SASL_USERNAME;
+    // const password = process.env.KAFKA_SASL_PASSWORD;
 
-    const sasl: Partial<KafkaConfig> = username && password
-        ? {
-            ssl: true,
-            sasl: {
-                mechanism: "plain" as const,
-                username,
-                password,
-            },
-        }
-        : {};
+    // const sasl: Partial<KafkaConfig> = username && password
+    //     ? {
+    //         ssl: true,
+    //         sasl: {
+    //             mechanism: "plain" as const,
+    //             username,
+    //             password,
+    //         },
+    //     }
+    //     : {};
 
     return new Kafka({
         clientId: serviceName || process.env.SERVICE_NAME || "langphy-service",
-        brokers: [broker],
-        ...sasl,
-        retry: {
-            initialRetryTime: 300,
-            retries: 10,
-        },
+        brokers: [process.env.KAFKA_BROKER ?? "kafka.railway.internal:9092"],
+        // brokers: [broker],
+        // ...sasl,
+        // retry: {
+        //     initialRetryTime: 300,
+        //     retries: 10,
+        // },
     });
 };

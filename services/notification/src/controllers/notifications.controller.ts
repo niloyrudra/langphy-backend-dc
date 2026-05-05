@@ -20,10 +20,10 @@ export const createNotification = async (req: Request, res: Response, next: Next
     if( !errors.isEmpty() ) throw new RequestValidationError(errors.array());
     try {
         const {data} = req.body;
-        const notifications = await NotificationModel.upsertNotification( data as Notification );
+        const notifications = await NotificationModel.insertNotification( data as Notification );
         return res.status(200).json({
-            message: "All notifications",
-            notifications
+            message: `Fetched notifications for userId: ${data?.user_id} and type: ${data?.type}`,
+            notifications  // already an array now
         });
     }
     catch(error) {

@@ -96,8 +96,13 @@ export const initConsumer = async () => {
                 await EventIndexModel.markProcessed(event);
 
             } catch (error) {
-                console.warn("Notification consumer error:", error);
-                throw error;
+                // console.warn("Notification consumer error:", error);
+                // throw error;
+
+                // Log and skip — don't rethrow, so KafkaJS commits the offset
+                // and moves on instead of retrying the same bad message forever
+                console.error(`[Consumer] Skipping bad message on topic ${topic}:`, error);
+                // Optionally write to a dead letter log for later inspection
             }
         }
     });

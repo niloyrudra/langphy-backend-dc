@@ -34,42 +34,49 @@ export const initConsumer = async () => {
             const rawData = JSON.parse( message.value.toString() );
 
             if( topic === TOPICS.SESSION_COMPLETED ) {    
-                const event = SessionCompletedEventSchema.parse(rawData);
-                
-                const existing = await EventIndexModel.exists( event.event_id );
-                if(existing) return;
-                if(await DeletedUsersRepo.exists( event.user_id )) return;
-
-                const result = await handleSessionCompleted({
-                    user_id: event.user_id,
-                    unit_id: event.payload.unit_id,
-                    session_type: event.payload.session_type,
-                    session_key: event.payload.session_key,
-                    score: event.payload.score ?? 0,
-                    attempts: event.payload.attempts ?? 0,
-                    total_duration_ms: event.payload.total_duration_ms,
-                    completed_at: event.payload.completed_at,
-                });
-
-                if(result.updated) {
-                    // await producer?.send({
-                    //     topic: TOPICS.PERFORMANCE_UPDATED,
-                    //     messages: [{
-                    //         key: event.user_id,
-                    //         value: JSON.stringify({
-                    //             event_type: "performance.updated.v1",
-                    //             payload: event.payload
-                    //         }),
-                    //     }],
-                    // });
+                try {
+                    const event = SessionCompletedEventSchema.parse(rawData);
+                    const existing = await EventIndexModel.exists( event.event_id );
+                    if(existing) return;
+                    if(await DeletedUsersRepo.exists( event.user_id )) return;
+    
+                    const result = await handleSessionCompleted({
+                        user_id: event.user_id,
+                        unit_id: event.payload.unit_id,
+                        session_type: event.payload.session_type,
+                        session_key: event.payload.session_key,
+                        score: event.payload.score ?? 0,
+                        attempts: event.payload.attempts ?? 0,
+                        total_duration_ms: event.payload.total_duration_ms,
+                        completed_at: event.payload.completed_at,
+                    });
+    
+                    if(result.updated) {
+                        // await producer?.send({
+                        //     topic: TOPICS.PERFORMANCE_UPDATED,
+                        //     messages: [{
+                        //         key: event.user_id,
+                        //         value: JSON.stringify({
+                        //             event_type: "performance.updated.v1",
+                        //             payload: event.payload
+                        //         }),
+                        //     }],
+                        // });
+                    }
+    
+                    await EventIndexModel.markProcessed(event);
                 }
-
-                await EventIndexModel.markProcessed(event);
+                catch(error) {
+                    // Log and skip — don't rethrow, so KafkaJS commits the offset
+                    // and moves on instead of retrying the same bad message forever
+                    console.error(`[Consumer] Skipping bad message on topic ${topic}:`, error);
+                    // Optionally write to a dead letter log for later inspection
+                }
             }
 
             if ( topic === TOPICS.USER_DELETED ) {
-                const event = UserDeletedEventSchema.parse( rawData );
                 try {
+                    const event = UserDeletedEventSchema.parse( rawData );
                     if ( await EventIndexModel.exists( event.event_id ) ) return;
 
                     await DeletedUsersRepo.insert( event.user_id );
@@ -79,8 +86,11 @@ export const initConsumer = async () => {
 
                     console.log( "🗑 Session Performance deleted for:", event.user_id );
                 }
-                catch(err) {
-                    console.error( "Session Performance deletion failed:", err );
+                catch(error) {
+                    // Log and skip — don't rethrow, so KafkaJS commits the offset
+                    // and moves on instead of retrying the same bad message forever
+                    console.error(`[Consumer] Skipping bad message on topic ${topic}:`, error);
+                    // Optionally write to a dead letter log for later inspection
                 }
             }
 

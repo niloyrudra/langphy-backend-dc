@@ -3,11 +3,12 @@ import type { Notification } from "../controllers/notifications.controller.js";
 
 export class NotificationModel {
 
-    static async upsertNotification(data: Notification) {
+    static async insertNotification(data: Notification) {
         try {
             const result = await pgPool.query(
                 `
                 INSERT INTO lp_notifications (
+                    id,
                     user_id,
                     type,
                     title,
@@ -16,18 +17,11 @@ export class NotificationModel {
                     data,
                     created_at
                 )
-                VALUES ($1,$2,$3,$4,$5,$6,$7)
-                ON CONFLICT (user_id)
-                DO UPDATE SET
-                    type = EXCLUDED.type,
-                    title = EXCLUDED.title,
-                    body = EXCLUDED.body,
-                    read = EXCLUDED.read OR lp_notifications.read,
-                    data = EXCLUDED.data,
-                    created_at = now()
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 RETURNING *
                 `,
                 [
+                    data.id,
                     data.user_id,
                     data.type,
                     data.title,
@@ -37,11 +31,11 @@ export class NotificationModel {
                     data.created_at,
                 ]
             );
-    
+
             return result.rows[0] ?? null;
         }
-        catch(error) {
-            console.log("upsertNotification error:", error);
+        catch (error) {
+            console.error("insertNotification error:", error);
             return null;
         }
     }
@@ -60,7 +54,7 @@ export class NotificationModel {
                     type,
                 ]
             );
-            return result.rows[0] ?? null;
+            return result.rows ?? null;
         }
         catch(error) {
             console.error("NotificationModel getByUserIdAndType error:", error);
@@ -73,7 +67,7 @@ export class NotificationModel {
             `SELECT * FROM lp_notifications WHERE user_id = $1 ORDER BY created_at DESC`,
             [userId]
         );
-        return result.rows;
+        return result.rows ?? null;
     }
 
     static async deleteUserNotifications(userId: string) {

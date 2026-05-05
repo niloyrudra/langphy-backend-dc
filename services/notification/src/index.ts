@@ -7,6 +7,7 @@ import { dbRouter } from "./routes/db-route.js";
 import { initProducer } from "./kafka/producer.js";
 import { initConsumer } from "./kafka/consumer.js";
 import { startDailyReminderJob } from "./jobs/daily-reminder.job.js";
+import { ensureTopics } from "./kafka/ensureTopics.js";
 const {json} = pkg;
 
 const app = Express();
@@ -20,6 +21,7 @@ app.use( errorHandler );
 
 const start = async () => {
     try{
+        await ensureTopics();
         await initConsumer();
     }
     catch(err) {
