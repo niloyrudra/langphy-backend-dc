@@ -18,6 +18,4 @@ export const StreakUpdatedEventSchema = z.object({
   }),
 });
 
-export type StreakUpdatedEvent = z.infer<
-  typeof StreakUpdatedEventSchema
->;
+export type StreakUpdatedEvent = z.infer<typeof StreakUpdatedEventSchema>;

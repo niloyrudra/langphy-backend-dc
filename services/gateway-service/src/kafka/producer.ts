@@ -35,7 +35,8 @@ const sendRaw = async (topic: string, key: string, value: unknown) => {
 
 export const publishEvent = async (event: BaseEvent) => {
   const topic = resolveTopic(event.event_type);
-  await sendRaw(topic, event.user_id, event);
+  await sendRaw(topic, event.user_id, event);  // ✅ This is now the normalizedEvent
+  // await sendRaw(topic, event.user_id, event.payload);  // ✅ This is now the normalizedEvent
   console.log(`📤 Published ${event.event_type} → ${topic}`);
 };
 

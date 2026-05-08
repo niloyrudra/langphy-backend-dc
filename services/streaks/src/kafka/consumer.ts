@@ -31,6 +31,10 @@ export const initConsumer = async () => {
             if( !message.value ) return;
 
             const raw = JSON.parse( message.value!.toString() );
+            if (!raw.event_id || !raw.event_type) {
+                console.warn(`[Streak Consumer] Skipping malformed message on ${topic}`);
+                return;
+            }
 
             if ( topic === TOPICS.SESSION_COMPLETED ) {
                 try {
@@ -80,7 +84,7 @@ export const initConsumer = async () => {
                 catch(error) {
                     // Log and skip — don't rethrow, so KafkaJS commits the offset
                     // and moves on instead of retrying the same bad message forever
-                    console.error(`[Consumer] Skipping bad message on topic ${topic}:`, error);
+                    console.error(`[Streak Consumer] Skipping bad message on topic ${topic}:`, error);
                     // Optionally write to a dead letter log for later inspection
                 }
             }
@@ -99,7 +103,7 @@ export const initConsumer = async () => {
                 catch(error) {
                     // Log and skip — don't rethrow, so KafkaJS commits the offset
                     // and moves on instead of retrying the same bad message forever
-                    console.error(`[Consumer] Skipping bad message on topic ${topic}:`, error);
+                    console.error(`[Streak Consumer] Skipping bad message on topic ${topic}:`, error);
                     // Optionally write to a dead letter log for later inspection
                 }
             }

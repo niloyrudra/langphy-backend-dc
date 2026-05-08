@@ -1,4 +1,3 @@
-// import { AchievementUnlockedEventSchema, LessonCompletedEventSchema, ReminderTriggeredEventSchema, SessionCompletedEventSchema, StreakUpdatedEventSchema, TOPICS, UserDeletedEventSchema, UserRegisteredEventSchema } from "@langphy/shared";
 import { connectWithRetry, LessonCompletedEventSchema, ReminderTriggeredEventSchema, SessionCompletedEventSchema, StreakUpdatedEventSchema, TOPICS, UserDeletedEventSchema, UserRegisteredEventSchema } from "@langphy/shared";
 import { kafka } from "./kafka.client.js"
 import { EventIndexModel } from "../models/eventIndex.model.js";
@@ -54,6 +53,12 @@ export const initConsumer = async () => {
             if (!message.value) return;
 
             const raw = JSON.parse(message.value.toString());
+
+            // Guard: skip messages that aren't valid BaseEvent envelopes
+            if (!raw.event_id || !raw.event_type) {
+                console.warn(`[Consumer] Skipping malformed message on topic ${topic}: missing envelope fields`);
+                return;  // return = commit offset and move on
+            }
 
             try {
                 // 1️⃣ Idempotency first
