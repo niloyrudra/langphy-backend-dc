@@ -9,6 +9,7 @@ interface SessionAttemptInput {
     attempts: number;
     total_duration_ms: number;
     completed_at: string | number;
+    // completed_at: string | number | Date;
 }
 
 export class SessionAttemptRepo {

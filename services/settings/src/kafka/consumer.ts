@@ -39,6 +39,10 @@ export const initSettingsConsumers = async () => {
             }
 
             const raw = JSON.parse(message.value.toString());
+            if (!raw.event_id || !raw.event_type) {
+                console.warn(`[Settings Consumer] Skipping malformed message on ${topic}`);
+                return;
+            }
 
             if( topic === TOPICS.SETTINGS_UPDATED ) {
                 let event;
