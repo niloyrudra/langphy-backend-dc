@@ -11,7 +11,7 @@ export const initProducer = async () => {
     while( retries > 0 ) {
         try {
             await producer.connect();
-            console.log("Progress - Kafka Produer connected successfully!");
+            console.log("Progress - Kafka Producer connected successfully!");
             return;
         }
         catch(err: any) {
@@ -61,7 +61,7 @@ export const publishEvent = async ( event: BaseEvent ): Promise<void> => {
 };
 
 /**
- * 
+ * Sends a progress updated event to Kafka
  * @param event
  * @return void
  * 

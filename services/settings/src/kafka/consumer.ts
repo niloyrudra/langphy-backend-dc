@@ -81,7 +81,10 @@ export const initSettingsConsumers = async () => {
                         console.warn("⚠️ Settings update returned nothing (may already exist)");
                     }
 
-                    await EventIndexModel.markProcessed( event );
+                    await EventIndexModel.markProcessed({
+                        ...event,
+                        occurred_at: event.occurred_at.toISOString(),
+                    });
 
                 } catch (error) {
                     // Log and skip — don't rethrow, so KafkaJS commits the offset
@@ -119,7 +122,10 @@ export const initSettingsConsumers = async () => {
                         console.warn("⚠️ Settings insert returned nothing (may already exist)");
                     }
 
-                    await EventIndexModel.markProcessed( event );
+                    await EventIndexModel.markProcessed({
+                        ...event,
+                        occurred_at: event.occurred_at.toISOString(),
+                    });
 
                 } catch (error) {
                     console.error(`[Settings Consumer] Settings creation failed for user ${event.user_id}:`, error);
@@ -135,7 +141,12 @@ export const initSettingsConsumers = async () => {
 
                     await SettingsModel.deleteSettingsByUserId( event.user_id );
 
-                    await EventIndexModel.markProcessed( event );
+                    await EventIndexModel.markProcessed({
+                        ...event,
+                        occurred_at: event.occurred_at instanceof Date
+                            ? event.occurred_at.toISOString()
+                            : event.occurred_at
+                    });
 
                     console.log( "🗑 Settings deleted for:", event.user_id );
                 }

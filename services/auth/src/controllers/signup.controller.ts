@@ -63,7 +63,7 @@ export const verifyOtpController = async (req: Request, res: Response) => {
             event_id: uuidv4(),
             event_type: "user.registered.v1",
             event_version: 1,
-            occurred_at: new Date().toISOString(),
+            occurred_at: new Date(), //  new Date().toISOString(),
             user_id: user.id,
             payload: { email, provider: "email" },
         });
@@ -105,7 +105,7 @@ export const signupController = async ( req: Request, res: Response ) => {
                 event_id: uuidv4(),
                 event_type: "user.registered.v1",
                 event_version: 1,
-                occurred_at: new Date().toISOString(),
+                occurred_at: new Date(), //  new Date().toISOString(),
                 user_id: user.id,
                 payload: {
                     email,

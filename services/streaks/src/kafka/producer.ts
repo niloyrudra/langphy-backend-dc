@@ -4,8 +4,8 @@ import { kafka } from "./kafka.client.js";
 export const producer = kafka.producer();
 
 export const initProducer = async () => {
-    await producer.connect();
-    console.log( `[${process.env.SERVICE_NAME!}] Kafka producer connected` );
+  await producer.connect();
+  console.log( `[${process.env.SERVICE_NAME!}] Kafka producer connected` );
 };
 
 export const shutdownProducer = async () => {
@@ -14,12 +14,12 @@ export const shutdownProducer = async () => {
 };
 
 export const publishStreakEvent = async ( topic: string, payload: any ) => {
-    await producer.send({
-        topic,
-        messages: [
-            {value: JSON.stringify( payload )}
-        ]
-    });
+  await producer.send({
+    topic,
+    messages: [
+      {value: JSON.stringify( payload )}
+    ]
+  });
 };
 
 export const publishStreakUpdated = async (event: StreakUpdatedEvent) => {

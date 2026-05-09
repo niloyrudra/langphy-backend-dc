@@ -8,7 +8,7 @@ export const SettingsUpdatedEventSchema = z.object({
   event_id: z.uuid(),
   event_type: z.literal("settings.updated.v1"),
   event_version: z.literal(1),
-  occurred_at: z.string().datetime(),
+  occurred_at: z.coerce.date(), // z.string().datetime(),
   user_id: z.uuid(),
   payload: z.object({
     sound_effect: z.boolean(),

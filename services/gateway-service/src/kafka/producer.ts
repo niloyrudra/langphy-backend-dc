@@ -48,8 +48,8 @@ const resolveTopic = (eventType: string): string => {
     case "lesson.completed.v1":
       return TOPICS.LESSON_COMPLETED;
 
-    case "streak.updated.v1":
-      return TOPICS.STREAK_UPDATED;
+    // case "streak.updated.v1":
+    //   return TOPICS.STREAK_UPDATED;
 
     // ✅ FIX: removed progress.updated, performance.updated,
     // notification.created, reminder.triggered — gateway should not

@@ -68,7 +68,14 @@ export const initConsumer = async () => {
                         // });
                     }
     
-                    await EventIndexModel.markProcessed(event);
+                    await EventIndexModel.markProcessed({
+                        ...event,
+                        // occurred_at: event.occurred_at instanceof Date ? event.occurred_at.getTime() : event.occurred_at
+                        // FIX: Convert the timestamp/Date to an ISO string for Postgres
+                        occurred_at: event.occurred_at instanceof Date 
+                            ? event.occurred_at.toISOString() 
+                            : new Date(event.occurred_at).toISOString()
+                    });
                 }
                 catch(error) {
                     // Log and skip — don't rethrow, so KafkaJS commits the offset
@@ -86,7 +93,14 @@ export const initConsumer = async () => {
                     await DeletedUsersRepo.insert( event.user_id );
                     await SessionPerformanceRepo.deleteSessionPerformanceByUserId( event.user_id );
                     await SessionAttemptRepo.deleteSessionAttemptsByUserId( event.user_id );
-                    await EventIndexModel.markProcessed( event );
+                    await EventIndexModel.markProcessed({
+                        ...event,
+                        // occurred_at: event.occurred_at instanceof Date ? event.occurred_at.getTime() : event.occurred_at
+                        // FIX: Convert the timestamp/Date to an ISO string for Postgres
+                        occurred_at: event.occurred_at instanceof Date 
+                            ? event.occurred_at.toISOString() 
+                            : new Date(event.occurred_at).toISOString()
+                    });
 
                     console.log( "🗑 Session Performance deleted for:", event.user_id );
                 }

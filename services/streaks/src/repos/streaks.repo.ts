@@ -22,6 +22,7 @@ type ApplyActivityResult = {
   longestStreak: number;
   lastActivityDate: string;
   celebration: string | null;
+  is_active: boolean;
 };
 
 export class StreakRepo {
@@ -52,6 +53,7 @@ export class StreakRepo {
         longestStreak: updatedStreak.longest_streak,
         lastActivityDate: updatedStreak.last_activity_date!,
         celebration,
+        is_active: true
       };
     } catch (error) {
       console.error("StreakRepo.applyActivity error:", error);
@@ -62,6 +64,7 @@ export class StreakRepo {
         longestStreak: 0,
         lastActivityDate: "",
         celebration: null,
+        is_active: false
       };
     }
   }

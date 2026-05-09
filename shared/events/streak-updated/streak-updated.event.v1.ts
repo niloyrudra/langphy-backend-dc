@@ -8,13 +8,13 @@ export const StreakUpdatedEventSchema = z.object({
   event_id: z.uuid(),
   event_type: z.literal("streak.updated.v1"),
   event_version: z.literal(1),
-  occurred_at: z.string().datetime(),
+  occurred_at: z.coerce.date(),
   user_id: z.uuid(),
   payload: z.object({
     current_streak: z.number().int().nonnegative(),
     longest_streak: z.number().int().nonnegative(),
-    last_activity_date: z.string().datetime().nullable(),
-    is_active: z.boolean(),
+    last_activity_date: z.coerce.date().nullable(), // z.string().datetime().nullable(),
+    is_active: z.boolean().default(true),
   }),
 });
 

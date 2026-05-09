@@ -50,7 +50,7 @@ export const upsertProgressController = async (
          * KAFKA
          * 
          * Emit progress.updated event
-         * This intialized progress-related services (performance, achievements, etc.)
+         * This initialized progress-related services (performance, achievements, etc.)
          * Consumer must be idempotent
          */
         // try {

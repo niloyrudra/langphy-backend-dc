@@ -7,8 +7,8 @@ export const NotificationCreatedSchema = BaseEventSchema.extend({
     payload: z.object({
         title: z.string(),
         body: z.string(),
-        read: z.boolean(),
-        created_at: z.string(),
+        read: z.boolean().default(false),
+        created_at: z.coerce.date(),
         data: z.record(z.string(), z.any()).optional() // key: string, value: any
     })
 });

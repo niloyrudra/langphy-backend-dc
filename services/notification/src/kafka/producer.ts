@@ -33,13 +33,13 @@ export async function emitNotificationCreated( notification: Notification ) {
         event_id: crypto.randomUUID(),
         event_type: "notification.created.v1",
         event_version: 1,
-        occurred_at: new Date().toISOString(),
+        occurred_at: new Date(),
         user_id: notification.user_id,
         payload: {
             title: notification.title,
             body: notification.body,
             read: notification.read,
-            created_at: notification.created_at,
+            created_at: new Date(notification.created_at),
             data: notification.data,
         },
     };
@@ -64,13 +64,13 @@ export async function emitReminderTriggered( notification: Notification ) {
         event_id: crypto.randomUUID(),
         event_type: "reminder.triggered.v1",
         event_version: 1,
-        occurred_at: new Date().toISOString(),
+        occurred_at: new Date(),
         user_id: notification.user_id,
         payload: {
             title: notification.title,
             body: notification.body,
             read: notification.read,
-            created_at: notification.created_at,
+            created_at: new Date(notification.created_at),
             data: notification.data,
         },
     };

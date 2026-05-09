@@ -40,20 +40,6 @@ export const postEvent = async (req: AuthRequest, res: Response) => {
          * 
          * If the event has a "data" property, we will extract the actual event from it and re-validate the shape. This allows us to handle both the old and new event shapes during the transition period.
          */
-        // The client stores the full envelope as the payload field.
-        // Unwrap until we reach the actual inner payload (no more nested envelope keys).
-        // while (
-        //     finalPayload &&
-        //     typeof finalPayload === "object" &&
-        //     "payload" in finalPayload
-        //     // &&
-        //     // ("event_id" in finalPayload || "event_type" in finalPayload)
-        // ) {
-        //     console.log(`[Gateway] Unwrapping nested envelope for ${event.event_type}`);
-        //     finalPayload = finalPayload.payload;
-        // }
-      
-        
         let finalPayload = event.payload as any;
         while (
             finalPayload &&

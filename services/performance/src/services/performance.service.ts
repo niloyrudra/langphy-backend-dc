@@ -9,7 +9,7 @@ interface SessionCompletedEvent {
     score: number;
     attempts: number;
     total_duration_ms: number;
-    completed_at: number;
+    completed_at: string | number;
 };
 
 export const handleSessionCompleted = async ( event: SessionCompletedEvent ) => {
@@ -41,9 +41,7 @@ export const handleSessionCompleted = async ( event: SessionCompletedEvent ) => 
             completed_at: completedAt
         });
 
-        return {
-            updated: true
-        };
+        return { updated: true };
 
     }
     catch(error) {

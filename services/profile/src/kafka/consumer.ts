@@ -37,7 +37,10 @@ export const startProfileConsumers = async () => {
 
                     await DeletedUsersRepo.insert( event.user_id );
                     await ProfileModel.deleteProfileById(event.user_id);
-                    await EventIndexModel.markProcessed(event);
+                    await EventIndexModel.markProcessed({
+                        ...event,
+                        occurred_at: event.occurred_at.toISOString(),
+                    });
 
                     console.log("🗑 Profile deleted for:", event.user_id);
                 }
@@ -55,7 +58,10 @@ export const startProfileConsumers = async () => {
                     if (await EventIndexModel.exists(event.event_id)) return;
 
                     await ProfileModel.createProfileIfNotExists( event.user_id, event.payload.email );
-                    await EventIndexModel.markProcessed(event);
+                    await EventIndexModel.markProcessed({
+                        ...event,
+                        occurred_at: event.occurred_at.toISOString(),
+                    });
         
                     console.log("✅ Profile created for user:", event.user_id);
                 }

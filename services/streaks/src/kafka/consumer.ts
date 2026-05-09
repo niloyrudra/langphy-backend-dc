@@ -8,12 +8,12 @@ import { DeletedUsersRepo } from "../repos/deleted-users.repo.js";
 
 const serviceName = process.env.SERVICE_NAME! ? process.env.SERVICE_NAME : 'streaks-service';
 const consumerGroupId = serviceName + '-group';
+
 export const consumer = kafka.consumer({
     groupId: consumerGroupId
 });
 
 export const initConsumer = async () => {
-    // await consumer.connect();
     await connectWithRetry( consumer, serviceName );
 
     await consumer.subscribe({
@@ -42,6 +42,10 @@ export const initConsumer = async () => {
                     // 1️⃣ Idempotency
                     if( await EventIndexModel.exists( event.event_id ) ) return;
                     if( await DeletedUsersRepo.exists( event.user_id ) ) return;
+
+                    const safeOccurredAt = event.occurred_at instanceof Date 
+                                                ? event.occurred_at.toISOString() 
+                                                : new Date(event.occurred_at).toISOString();
                     
                     // 2️⃣ Apply streak logic
                     const result = await StreakRepo.applyActivity({ userId: event.user_id });
@@ -58,12 +62,16 @@ export const initConsumer = async () => {
                                         event_id: uuid(),
                                         event_version: 1,
                                         user_id: event.user_id,
-                                        occurred_at: event.occurred_at,
+                                        // occurred_at: event.occurred_at ? new Date(event.occurred_at).toISOString() : new Date().toISOString(),
+                                        occurred_at: safeOccurredAt,
                                         payload: {
                                             current_streak: result.currentStreak,
                                             longest_streak: result.longestStreak,
-                                            last_activity_date: result.lastActivityDate,
                                             celebration: result.celebration,
+                                            last_activity_date: result.lastActivityDate 
+                                                ? new Date(result.lastActivityDate).toISOString() 
+                                                : null,
+                                            is_active: result.is_active
                                         },
                                     }),
                                 },
@@ -77,8 +85,14 @@ export const initConsumer = async () => {
                         event_type: event.event_type,
                         event_version: event.event_version,
                         user_id: event.user_id,
-                        occurred_at: event?.occurred_at ?? new Date().toISOString(),
-                        payload: event
+                        // occurred_at: event.occurred_at
+                        //     ? event.occurred_at instanceof Date
+                        //         ? event.occurred_at.toISOString()
+                        //         : event.occurred_at
+                        //     : new Date().toISOString(),
+                        // FIX: Convert to ISO string to satisfy the Postgres 'occurred_at' column
+                        occurred_at: safeOccurredAt,
+                        payload: event.payload // Updated to event.payload | previously it was event which is the entire event object, but we should only store the payload to save space and because that's all we need for idempotency checks
                     });
                 }
                 catch(error) {
@@ -93,10 +107,26 @@ export const initConsumer = async () => {
                 try {
                     const event = UserDeletedEventSchema.parse( raw );
                     if ( await EventIndexModel.exists( event.event_id ) ) return;
+                    const safeOccurredAt = event.occurred_at instanceof Date 
+                                                ? event.occurred_at.toISOString() 
+                                                : new Date(event.occurred_at).toISOString();
 
                     await DeletedUsersRepo.insert( event.user_id );
                     await StreakRepo.deleteStreak( event.user_id );
-                    await EventIndexModel.markProcessed( event );
+                    await EventIndexModel.markProcessed({
+                        event_id: event.event_id,
+                        event_type: event.event_type,
+                        event_version: event.event_version,
+                        user_id: event.user_id,
+                        // occurred_at: event.occurred_at
+                        //     ? event.occurred_at instanceof Date
+                        //         ? event.occurred_at.toISOString()
+                        //         : event.occurred_at
+                        //     : new Date().toISOString(),
+                        // FIX: Convert to ISO string to satisfy the Postgres 'occurred_at' column
+                        occurred_at: safeOccurredAt,
+                        payload: event.payload
+                    });
 
                     console.log( "🗑 Streak deleted for:", event.user_id );
                 }

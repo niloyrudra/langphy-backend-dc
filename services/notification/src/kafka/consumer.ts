@@ -1,4 +1,4 @@
-import { connectWithRetry, LessonCompletedEventSchema, ReminderTriggeredEventSchema, SessionCompletedEventSchema, StreakUpdatedEventSchema, TOPICS, UserDeletedEventSchema, UserRegisteredEventSchema } from "@langphy/shared";
+import { connectWithRetry, ReminderTriggeredEventSchema, SessionCompletedEventSchema, StreakUpdatedEventSchema, TOPICS, UserDeletedEventSchema, UserRegisteredEventSchema } from "@langphy/shared";
 import { kafka } from "./kafka.client.js"
 import { EventIndexModel } from "../models/eventIndex.model.js";
 import { topicHandlerMap } from "../application/handle.registry.js";
@@ -33,10 +33,10 @@ export const initConsumer = async () => {
         fromBeginning: false
     });
 
-    await consumer.subscribe({
-        topic: TOPICS.LESSON_COMPLETED,
-        fromBeginning: false
-    });
+    // await consumer.subscribe({
+    //     topic: TOPICS.LESSON_COMPLETED,
+    //     fromBeginning: false
+    // });
 
     await consumer.subscribe({
         topic: TOPICS.STREAK_UPDATED,
@@ -79,9 +79,9 @@ export const initConsumer = async () => {
                 else if (topic === TOPICS.STREAK_UPDATED) {
                     event = StreakUpdatedEventSchema.parse(raw);
                 }
-                else if (topic === TOPICS.LESSON_COMPLETED) {
-                    event = LessonCompletedEventSchema.parse(raw);
-                }
+                // else if (topic === TOPICS.LESSON_COMPLETED) {
+                //     event = LessonCompletedEventSchema.parse(raw);
+                // }
                 else if (topic === TOPICS.REMINDER_TRIGGERED) {
                     event = ReminderTriggeredEventSchema.parse(raw);
                 }

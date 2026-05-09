@@ -11,16 +11,16 @@ export const ProgressUpdatedEventSchema = z.object({
     occurred_at: z.string().datetime(),
     user_id: z.uuid(),
     payload: z.object({
-        category_id: z.uuid(),
-        unit_id: z.uuid(),
+        category_id: z.string(), // z.uuid(),
+        unit_id: z.string(), // z.uuid(),
         session_key: z.string(),
-        lesson_id: z.uuid(),
-        lesson_order: z.number(),
+        lesson_id: z.string(), // z.uuid(),
         session_type: z.enum(["quiz",  "practice", "reading", "writing", "speaking", "listening"]),
-        completed: z.boolean(),
-        duration_ms: z.number(),
-        progress_percent: z.number(),
-        score: z.number().min(0).max(100).optional()
+        lesson_order: z.number().default(0),
+        completed: z.boolean().default(false),
+        duration_ms: z.number().default(0),
+        progress_percent: z.number().min(0).max(100).default(0),
+        score: z.number().min(0).max(100).optional().default(0)
     })
 });
 
