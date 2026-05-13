@@ -6,6 +6,7 @@ import { emitNotificationCreated } from "../../kafka/producer.js";
 import { sendExpoPush } from "../../repos/push-notification.repo.js";
 import { upsertUserDailyActivity } from "../../services/user-daily-activity.service.js";
 import { DeletedUsersRepo } from "../../repos/deleted-users.repo.js";
+import { randomUUID } from "crypto";
 
 export class UserRegisteredHandler implements NotificationEventHandler<UserRegisteredEvent>
 {
@@ -14,11 +15,11 @@ export class UserRegisteredHandler implements NotificationEventHandler<UserRegis
             return;
         }
         const notification = {
-            id: crypto.randomUUID(),
+            id: randomUUID(),
             user_id: event.user_id,
             type: "user.registered.v1",
             title: "Congratulations! 🎉",
-            body: `You are registered to Langphy using this email: ${event.payload.email}%`,
+            body: `You are registered to Langphy using this email: ${event.payload.email}`,
             read: false,
             created_at: new Date().toISOString(),
             data: { email: event.payload.email, provider: event.payload.provider },
@@ -31,5 +32,7 @@ export class UserRegisteredHandler implements NotificationEventHandler<UserRegis
 
         // Upsert user daily activity
         await upsertUserDailyActivity( event.user_id );
+
+        console.log(`UserRegisteredHandler: Sent welcome notification to user ${event.user_id} with email ${event.payload.email} and provider ${event.payload.provider}`);
     }
 }

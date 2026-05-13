@@ -1,6 +1,7 @@
 import { TOPICS, type NotificationCreatedEvent, type ReminderTriggeredEvent } from "@langphy/shared";
 import { kafka } from "./kafka.client.js";
 import type { Notification } from "../controllers/notifications.controller.js";
+import { randomUUID } from "crypto";
 
 export let producer: ReturnType<typeof kafka.producer> | null = null;
 
@@ -11,7 +12,7 @@ export const initProducer = async () => {
     while( retries > 0 ) {
         try {
             await producer.connect();
-            console.log("Notifications - Kafka Produer connected successfully!");
+            console.log("Notifications - Kafka Producer connected successfully!");
             return;
         }
         catch(err: any) {
@@ -30,7 +31,7 @@ export async function emitNotificationCreated( notification: Notification ) {
     }
 
     const event: NotificationCreatedEvent = {
-        event_id: crypto.randomUUID(),
+        event_id: randomUUID(),
         event_type: "notification.created.v1",
         event_version: 1,
         occurred_at: new Date(),
@@ -43,6 +44,8 @@ export async function emitNotificationCreated( notification: Notification ) {
             data: notification.data,
         },
     };
+
+    console.log("Emitting notification.created event:", event.event_id, "for user:", event.user_id);
 
     await producer.send({
         topic: TOPICS.NOTIFICATION_CREATED,
@@ -61,7 +64,7 @@ export async function emitReminderTriggered( notification: Notification ) {
     }
 
     const event: ReminderTriggeredEvent = {
-        event_id: crypto.randomUUID(),
+        event_id: randomUUID(),
         event_type: "reminder.triggered.v1",
         event_version: 1,
         occurred_at: new Date(),
@@ -74,6 +77,8 @@ export async function emitReminderTriggered( notification: Notification ) {
             data: notification.data,
         },
     };
+
+    console.log("Emitting reminder.triggered event:", event.event_id, "for user:", event.user_id);
 
     await producer.send({
         topic: TOPICS.REMINDER_TRIGGERED,

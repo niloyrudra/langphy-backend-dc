@@ -15,7 +15,13 @@ import type { Notification } from "../controllers/notifications.controller.js";
 export const sendExpoPush = async (notification: Notification): Promise<void> => {
     try {
         const tokens = await DeviceTokenModel.findByUserId(notification.user_id);
-        if (!tokens.length) return;
+        // if (!tokens.length) return;
+        if (!tokens.length) {
+            console.warn(`[sendExpoPush] No device tokens for user ${notification.user_id} — skipping push.`);
+            return;
+        }
+
+        console.log(`[sendExpoPush] Sending to ${tokens.length} token(s) for user ${notification.user_id}`);
 
         const messages = tokens.map(token => ({
             to:    token,
@@ -35,11 +41,12 @@ export const sendExpoPush = async (notification: Notification): Promise<void> =>
         });
 
         if (!res.ok) {
-            console.error(`[sendExpoPush] Expo API error ${res.status}:`, await res.text());
+            console.error(`[sendExpoPush] Expo API ${res.status}:`, await res.text());
             return;
         }
 
         const result = await res.json();
+        console.log(`[sendExpoPush] Expo response for user ${notification.user_id}:`, JSON.stringify(result.data));
 
         // Clean up invalid/expired tokens
         const data: any[] = Array.isArray(result.data) ? result.data : [];

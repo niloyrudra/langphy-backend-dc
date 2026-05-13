@@ -5,6 +5,7 @@ import { saveNotification } from "../../repos/notifications.repo.js";
 import { emitNotificationCreated } from "../../kafka/producer.js";
 import { DeletedUsersRepo } from "../../repos/deleted-users.repo.js";
 import { sendExpoPush } from "../../repos/push-notification.repo.js";
+import { randomUUID } from "crypto";
 
 export class SessionCompletedHandler implements NotificationEventHandler<SessionCompletedEvent>
 {
@@ -13,7 +14,7 @@ export class SessionCompletedHandler implements NotificationEventHandler<Session
             return;
         }
         const notification = {
-            id: crypto.randomUUID(),
+            id: randomUUID(),
             user_id: event.user_id,
             type: "session.completed.v1",
             title: "Session completed 🎉",
@@ -27,5 +28,7 @@ export class SessionCompletedHandler implements NotificationEventHandler<Session
         await emitNotificationCreated(notification);
         
         await sendExpoPush(notification);
+
+        console.log(`SessionCompletedHandler: Sent session completed notification to user ${event.user_id} for unit ${event.payload.unit_id} and session type ${event.payload.session_type}`);
     }
 }

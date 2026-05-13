@@ -13,6 +13,15 @@ export const consumer = kafka.consumer({
     groupId: consumerGroupId
 });
 
+// ✅ Safe helper — handles Invalid Date objects from z.coerce.date()
+const toSafeISOString = (val: unknown): string => {
+    if (val instanceof Date) {
+        return isNaN(val.getTime()) ? new Date().toISOString() : val.toISOString();
+    }
+    const d = new Date(val as string);
+    return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+};
+
 export const initConsumer = async () => {
     await connectWithRetry( consumer, serviceName );
 
@@ -43,10 +52,11 @@ export const initConsumer = async () => {
                     if( await EventIndexModel.exists( event.event_id ) ) return;
                     if( await DeletedUsersRepo.exists( event.user_id ) ) return;
 
-                    const safeOccurredAt = event.occurred_at instanceof Date 
-                                                ? event.occurred_at.toISOString() 
-                                                : new Date(event.occurred_at).toISOString();
-                    
+                    // const safeOccurredAt = event.occurred_at instanceof Date 
+                    //                             ? event.occurred_at.toISOString() 
+                    //                             : new Date(event.occurred_at).toISOString();
+                    const safeOccurredAt = toSafeISOString(event.occurred_at);
+
                     // 2️⃣ Apply streak logic
                     const result = await StreakRepo.applyActivity({ userId: event.user_id });
     
@@ -62,14 +72,13 @@ export const initConsumer = async () => {
                                         event_id: uuid(),
                                         event_version: 1,
                                         user_id: event.user_id,
-                                        // occurred_at: event.occurred_at ? new Date(event.occurred_at).toISOString() : new Date().toISOString(),
                                         occurred_at: safeOccurredAt,
                                         payload: {
                                             current_streak: result.currentStreak,
                                             longest_streak: result.longestStreak,
                                             celebration: result.celebration,
                                             last_activity_date: result.lastActivityDate 
-                                                ? new Date(result.lastActivityDate).toISOString() 
+                                                ? toSafeISOString(result.lastActivityDate) 
                                                 : null,
                                             is_active: result.is_active
                                         },
@@ -85,11 +94,6 @@ export const initConsumer = async () => {
                         event_type: event.event_type,
                         event_version: event.event_version,
                         user_id: event.user_id,
-                        // occurred_at: event.occurred_at
-                        //     ? event.occurred_at instanceof Date
-                        //         ? event.occurred_at.toISOString()
-                        //         : event.occurred_at
-                        //     : new Date().toISOString(),
                         // FIX: Convert to ISO string to satisfy the Postgres 'occurred_at' column
                         occurred_at: safeOccurredAt,
                         payload: event.payload // Updated to event.payload | previously it was event which is the entire event object, but we should only store the payload to save space and because that's all we need for idempotency checks
@@ -107,9 +111,11 @@ export const initConsumer = async () => {
                 try {
                     const event = UserDeletedEventSchema.parse( raw );
                     if ( await EventIndexModel.exists( event.event_id ) ) return;
-                    const safeOccurredAt = event.occurred_at instanceof Date 
-                                                ? event.occurred_at.toISOString() 
-                                                : new Date(event.occurred_at).toISOString();
+                    // const safeOccurredAt = event.occurred_at instanceof Date 
+                    //                             ? event.occurred_at.toISOString() 
+                    //                             : new Date(event.occurred_at).toISOString();
+
+                    const safeOccurredAt = toSafeISOString(event.occurred_at);
 
                     await DeletedUsersRepo.insert( event.user_id );
                     await StreakRepo.deleteStreak( event.user_id );
@@ -118,11 +124,6 @@ export const initConsumer = async () => {
                         event_type: event.event_type,
                         event_version: event.event_version,
                         user_id: event.user_id,
-                        // occurred_at: event.occurred_at
-                        //     ? event.occurred_at instanceof Date
-                        //         ? event.occurred_at.toISOString()
-                        //         : event.occurred_at
-                        //     : new Date().toISOString(),
                         // FIX: Convert to ISO string to satisfy the Postgres 'occurred_at' column
                         occurred_at: safeOccurredAt,
                         payload: event.payload

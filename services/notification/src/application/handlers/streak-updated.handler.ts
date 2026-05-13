@@ -5,6 +5,7 @@ import { saveNotification } from "../../repos/notifications.repo.js";
 import { emitNotificationCreated } from "../../kafka/producer.js";
 import { DeletedUsersRepo } from "../../repos/deleted-users.repo.js";
 import { sendExpoPush } from "../../repos/push-notification.repo.js";
+import { randomUUID } from "crypto";
 
 export class StreakUpdatedHandler implements NotificationEventHandler<StreakUpdatedEvent>
 {
@@ -13,7 +14,7 @@ export class StreakUpdatedHandler implements NotificationEventHandler<StreakUpda
             return;
         }
         const notification = {
-            id: crypto.randomUUID(),
+            id: randomUUID(),
             user_id: event.user_id,
             type: "streak.updated.v1",
             title: "Streak updated 🔥",
@@ -27,5 +28,7 @@ export class StreakUpdatedHandler implements NotificationEventHandler<StreakUpda
         await emitNotificationCreated(notification);
         
         await sendExpoPush(notification);
+
+        console.log(`StreakUpdatedHandler: Sent streak updated notification to user ${event.user_id} with current streak ${event.payload.current_streak} and last active date ${event.payload.last_activity_date}`);
     }
 }

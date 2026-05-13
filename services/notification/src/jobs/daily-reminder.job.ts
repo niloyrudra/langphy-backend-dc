@@ -2,6 +2,7 @@ import { schedule } from "node-cron";
 import { pgPool } from "../db/index.js";
 import { emitReminderTriggered } from "../kafka/producer.js";
 import type { Notification } from "../controllers/notifications.controller.js";
+import { randomUUID } from "crypto";
 
 /**
  * Runs at 19:00 every day.
@@ -26,11 +27,11 @@ export const startDailyReminderJob = () => {
 
             for (const user of rows) {
                 const notification: Notification = {
-                    id:         crypto.randomUUID(),
+                    id:         randomUUID(),
                     user_id:    user.user_id,
                     type:       "reminder.triggered",
                     title:      "⏰ Time to Practice!",
-                    body:       "Don't break your streak — complete a lesson now!",
+                    body:       "Don't break your streak — complete a session now!",
                     read:       false,
                     created_at: new Date().toISOString(),
                     data:       {},

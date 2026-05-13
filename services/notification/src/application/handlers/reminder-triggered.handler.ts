@@ -6,6 +6,7 @@ import { saveNotification } from "../../repos/notifications.repo.js";
 import { emitNotificationCreated } from "../../kafka/producer.js";
 import { DeletedUsersRepo } from "../../repos/deleted-users.repo.js";
 import { sendExpoPush } from "../../repos/push-notification.repo.js";
+import { randomUUID } from "crypto";
 
 export class ReminderTriggeredHandler implements NotificationEventHandler<ReminderTriggeredEvent>
 {
@@ -14,7 +15,7 @@ export class ReminderTriggeredHandler implements NotificationEventHandler<Remind
             return;
         }
         const notification = {
-            id: crypto.randomUUID(),
+            id: randomUUID(),
             user_id: event.user_id,
             type: "reminder.triggered.v1",
             title: "⏰ Time to Practice!",
@@ -28,5 +29,7 @@ export class ReminderTriggeredHandler implements NotificationEventHandler<Remind
         await emitNotificationCreated(notification);
         
         await sendExpoPush(notification);
+
+        console.log(`ReminderTriggeredHandler: Sent reminder notification to user ${event.user_id}`);
     }
 }

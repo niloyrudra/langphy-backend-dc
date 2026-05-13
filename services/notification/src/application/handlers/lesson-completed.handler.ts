@@ -6,6 +6,7 @@
 // import { sendExpoPush } from "../../repos/push-notification.repo.js";
 // import { upsertUserDailyActivity } from "../../services/user-daily-activity.service.js";
 // import { DeletedUsersRepo } from "../../repos/deleted-users.repo.js";
+// import { randomUUID } from "crypto";
 
 // export class LessonCompletedHandler implements NotificationEventHandler<LessonCompletedEvent>
 // {
@@ -18,7 +19,7 @@
 //             return;
 //         }
 //         const notification = {
-//             id: crypto.randomUUID(),
+//             id: randomUUID(),
 //             user_id: event.user_id,
 //             type: "lesson.completed.v1",
 //             title: "Lesson Completed 🎉",

@@ -9,9 +9,9 @@ import { UserDeletedHandler } from "./handlers/userDeletionHandler.js";
 
 export const topicHandlerMap: Record<string, NotificationEventHandler<any>> = {
   // [TOPICS.ACHIEVEMENT_UNLOCKED]: new AchievementUnlockedHandler(),
+  // [TOPICS.LESSON_COMPLETED]: new LessonCompletedHandler(), //  ⛔️ LessonCompleted events are now consumed by Progress service, NOT Notification service. This prevents circular dependencies and infinite loops.
   [TOPICS.SESSION_COMPLETED]: new SessionCompletedHandler(),
   [TOPICS.REMINDER_TRIGGERED]: new ReminderTriggeredHandler(),
-  // [TOPICS.LESSON_COMPLETED]: new LessonCompletedHandler(), //  ⛔️ LessonCompleted events are now consumed by Progress service, NOT Notification service. This prevents circular dependencies and infinite loops.
   [TOPICS.USER_REGISTERED]: new UserRegisteredHandler(),
   [TOPICS.STREAK_UPDATED]: new StreakUpdatedHandler(),
   [TOPICS.USER_DELETED]: new UserDeletedHandler(),
