@@ -6,8 +6,15 @@ import { DeletedUsersRepo } from "../repos/deleted-users.repo.js";
 
 const serviceName = process.env.SERVICE_NAME! ? process.env.SERVICE_NAME : 'notification-service';
 const consumerGroupId = serviceName + '-group';
-export const consumer = kafka.consumer({
-    groupId: consumerGroupId
+const consumer = kafka.consumer({
+    groupId: consumerGroupId,
+    sessionTimeout: 30000, // 30 seconds — adjust based on expected processing time
+    heartbeatInterval: 3000, // 3 seconds — should be less than sessionTimeout
+    // maxWaitTimeInMs: 5000, // 5 seconds — how long to wait for a batch of messages
+    maxBytesPerPartition: 1048576, // 1 MB — adjust based on message size
+    retry: {
+        retries: 5,
+    },
 });
 
 export const initConsumer = async () => {
@@ -16,6 +23,7 @@ export const initConsumer = async () => {
 
     await consumer.subscribe({
         topic: TOPICS.USER_REGISTERED,
+        fromBeginning: false
     });
 
     await consumer.subscribe({
@@ -49,6 +57,7 @@ export const initConsumer = async () => {
     });
 
     await consumer.run({
+        autoCommit: false, // we'll commit manually after processing each message
         eachMessage: async ({ topic, message }) => {
             if (!message.value) return;
 
@@ -96,9 +105,17 @@ export const initConsumer = async () => {
 
                 if (!handler) return;
 
-                await handler.handle(event);
+                // await handler.handle(event);
 
-                await EventIndexModel.markProcessed(event);
+                // await EventIndexModel.markProcessed(event);
+                try {
+                    await handler.handle(event);
+                } catch (handlerError) {
+                    console.error(`[Consumer] Handler failed for topic ${topic}:`, handlerError);
+                } finally {
+                    // Always mark processed to prevent redelivery
+                    await EventIndexModel.markProcessed(event);
+                }
 
             } catch (error) {
                 // console.warn("Notification consumer error:", error);

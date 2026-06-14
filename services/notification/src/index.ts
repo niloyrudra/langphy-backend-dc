@@ -1,3 +1,13 @@
+process.on('uncaughtException', (err) => {
+    console.error('[FATAL] Uncaught Exception:', err);
+    process.exit(1); // Let Railway restart the container cleanly
+});
+
+process.on('unhandledRejection', (reason) => {
+    console.error('[FATAL] Unhandled Rejection:', reason);
+    process.exit(1); // Same here
+});
+
 import Express from "express";
 import "express-async-errors";
 import { NotificationRouter } from "./routes/notification.route.js";

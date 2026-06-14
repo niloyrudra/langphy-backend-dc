@@ -1,14 +1,21 @@
+process.on('uncaughtException', (err) => {
+    console.error('[FATAL] Uncaught Exception:', err);
+    process.exit(1); // Let Railway restart the container cleanly
+});
+
+process.on('unhandledRejection', (reason) => {
+    console.error('[FATAL] Unhandled Rejection:', reason);
+    process.exit(1); // Same here
+});
+
 import Express from "express";
 import "express-async-errors";
 import { StreaksRouter } from "./routes/streaks.js";
 import { errorHandler } from "./middlewares/error-handler.js";
 import pkg from "body-parser";
 import { dbRouter } from "./routes/db-route.js";
-// import { initProducer, shutdownProducer } from "./kafka/producer.js";
-// import { initConsumer } from "./kafka/consumer.js";
 import { startKafka } from "./kafka/index.js";
 const {json} = pkg;
-// import cors from 'cors';
 
 const app = Express();
 

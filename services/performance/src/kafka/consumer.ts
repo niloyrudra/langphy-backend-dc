@@ -9,7 +9,7 @@ import { DeletedUsersRepo } from "../repos/deleted-users.repo.js";
 
 const serviceName = process.env.SERVICE_NAME! ? process.env.SERVICE_NAME : 'performance-service';
 const consumerGroupId = serviceName + '-group';
-export const consumer = kafka.consumer({
+const consumer = kafka.consumer({
     groupId: consumerGroupId
 });
 

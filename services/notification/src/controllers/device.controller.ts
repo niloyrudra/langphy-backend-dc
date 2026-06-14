@@ -13,12 +13,15 @@ import type { AuthRequest } from "../middlewares/require-auth.js";
  * Handles new APK installs that generate a new FCM/Expo token.
  */
 export const registerDeviceToken = async (req: AuthRequest, res: Response) => {
+    console.log("[registerDeviceToken] called — userId:", req.user?.id, "token:", req.body?.token?.slice(0, 20));
     const errors = validationResult(req);
     if (!errors.isEmpty()) throw new RequestValidationError(errors.array());
 
     try {
         const userId = req.user?.id;
         const { platform, token } = req.body;
+
+
         if (!userId || !platform || !token) throw new BadRequestError("Missing required param(s)!");
 
         await DeviceTokenModel.upsertToken(userId, token, platform);

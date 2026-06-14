@@ -3,7 +3,7 @@ import { kafka } from "./kafka.client.js";
 import type { Notification } from "../controllers/notifications.controller.js";
 import { randomUUID } from "crypto";
 
-export let producer: ReturnType<typeof kafka.producer> | null = null;
+let producer: ReturnType<typeof kafka.producer> | null = null;
 
 export const initProducer = async () => {
     let retries = 10;

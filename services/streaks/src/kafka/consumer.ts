@@ -10,7 +10,14 @@ const serviceName = process.env.SERVICE_NAME! ? process.env.SERVICE_NAME : 'stre
 const consumerGroupId = serviceName + '-group';
 
 export const consumer = kafka.consumer({
-    groupId: consumerGroupId
+    groupId: consumerGroupId,
+    sessionTimeout: 30000, // 30 seconds — adjust based on expected processing time
+    heartbeatInterval: 3000, // 3 seconds — should be less than sessionTimeout
+    // maxWaitTimeInMs: 5000, // 5 seconds — how long to wait for a batch of messages
+    maxBytesPerPartition: 1048576, // 1 MB — adjust based on message size
+    retry: {
+        retries: 5,
+    },
 });
 
 // ✅ Safe helper — handles Invalid Date objects from z.coerce.date()
@@ -36,6 +43,7 @@ export const initConsumer = async () => {
     });
 
     await consumer.run({
+        autoCommit: false, // we'll commit manually after processing each message
         eachMessage: async ( { topic, message } ) => {
             if( !message.value ) return;
 
@@ -104,6 +112,7 @@ export const initConsumer = async () => {
                     // and moves on instead of retrying the same bad message forever
                     console.error(`[Streak Consumer] Skipping bad message on topic ${topic}:`, error);
                     // Optionally write to a dead letter log for later inspection
+                    console.error(`[Streak Consumer] Raw message was:`, JSON.stringify(raw));
                 }
             }
 
@@ -136,6 +145,7 @@ export const initConsumer = async () => {
                     // and moves on instead of retrying the same bad message forever
                     console.error(`[Streak Consumer] Skipping bad message on topic ${topic}:`, error);
                     // Optionally write to a dead letter log for later inspection
+                    console.error(`[Streak Consumer] Raw message was:`, JSON.stringify(raw));
                 }
             }
             

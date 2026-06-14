@@ -15,7 +15,8 @@ import type { Notification } from "../controllers/notifications.controller.js";
 export const sendExpoPush = async (notification: Notification): Promise<void> => {
     try {
         const tokens = await DeviceTokenModel.findByUserId(notification.user_id);
-        // if (!tokens.length) return;
+        console.log(`[sendExpoPush] Raw tokens from DB for ${notification.user_id}:`, JSON.stringify(tokens));
+        
         if (!tokens.length) {
             console.warn(`[sendExpoPush] No device tokens for user ${notification.user_id} — skipping push.`);
             return;
@@ -71,37 +72,3 @@ export const sendExpoPush = async (notification: Notification): Promise<void> =>
         console.error("[sendExpoPush] error:", error);
     }
 };
-
-
-// import { DeviceTokenModel } from "../models/device-token.model.js";
-// import type { Notification } from "../controllers/notifications.controller.js";
-
-// export const sendExpoPush = async ( notification: Notification ) => {
-//     try {
-//         const tokens = await DeviceTokenModel.findByUserId( notification.user_id );
-//         if(!tokens.length) return;
-
-//         const messages = tokens.map(token => ({
-//             to: token,
-//             sound: "default",
-//             title: notification.title,
-//             body: notification.body,
-//             data: notification.data ?? {}
-//         }));
-
-//         await fetch(
-//             `https://exp.host/--/api/v2/push/send`,
-//             {
-//                 method: "POST",
-//                 headers: {
-//                     Accept: "application/json",
-//                     "Content-Type": "application/json"
-//                 },
-//                 body: JSON.stringify(messages)
-//             }
-//         );
-//     }
-//     catch(error) {
-//         console.error("Push-Notification Repo sendExpoPush error:", error);
-//     }
-// };
