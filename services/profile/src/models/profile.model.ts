@@ -77,7 +77,7 @@ export class ProfileModel {
                 ]
             );
 
-            if (!result.rows[0]) {
+            if (!result || !result.rows || result.rows.length === 0) {
                 throw new BadRequestError("Profile not found");
             }
         
@@ -85,6 +85,9 @@ export class ProfileModel {
         }
         catch(err: any) {
             console.error("Update profile error:", err);
+
+            // Re-throw known CustomError subclasses as-is
+            if (err instanceof BadRequestError) throw err;
 
             // Handle unique username violation gracefully
             if (err.code === "23505") {

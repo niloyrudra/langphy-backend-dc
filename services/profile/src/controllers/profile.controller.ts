@@ -1,4 +1,4 @@
-import type { NextFunction, Request, Response } from "express";
+import type { NextFunction, Response } from "express";
 import { ProfileModel } from "../models/profile.model.js";
 import { validationResult } from "express-validator";
 import { BadRequestError } from "../errors/bad-request-errors.js";

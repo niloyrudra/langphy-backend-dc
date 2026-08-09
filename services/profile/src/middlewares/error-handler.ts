@@ -7,6 +7,10 @@ export const errorHandler = (
     res: Response,
     _next: NextFunction
 ) => {
-    if( err instanceof CustomError ) return res.status(err.statusCode).json({ errors: err.serializeErrors });
-    res.status( 400 ).json({ errors: [{message: "Something went wrong!"}] });
-}
+    if (err instanceof CustomError) {
+        return res.status(err.statusCode).json({ errors: err.serializeErrors() });
+    }
+
+    console.error("[profile] unhandled error:", err);
+    res.status(400).json({ errors: [{ message: "Something went wrong!" }] });
+};

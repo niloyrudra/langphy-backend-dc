@@ -5,8 +5,6 @@ export class ConflictValidationError extends CustomError {
     reason = "User already exists!";
     constructor() {
         super( "User already exists!" );
-
-        Object.setPrototypeOf( this, ConflictValidationError.prototype ); // As we extend Error Class
     }
 
     serializeErrors() {
