@@ -10,6 +10,7 @@ process.on('unhandledRejection', (reason) => {
 
 import Express from "express";
 import "express-async-errors";
+import helmet from "helmet";
 import { NotificationRouter } from "./routes/notification.route.js";
 import { errorHandler } from "./middlewares/error-handler.js";
 import pkg from "body-parser";
@@ -22,6 +23,7 @@ const {json} = pkg;
 
 const app = Express();
 
+app.use(helmet());
 app.use( json() );
 
 app.use( dbRouter );
