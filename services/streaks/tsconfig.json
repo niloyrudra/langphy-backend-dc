@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "NodeNext",
+    "moduleResolution": "NodeNext",
 
     "rootDir": "./src",
     "outDir": "./dist",
@@ -13,10 +14,10 @@
     "strict": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
     "skipLibCheck": true,
-    // "ignoreDeprecations": "6.0",
 
-    // "baseUrl": ".", // Deprecated in favor of 'paths'
     "paths": {
       "@langphy/shared": ["../../shared/dist/index.d.ts"],
       "@langphy/shared/*": ["../../shared/dist/*"]

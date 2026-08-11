@@ -15,8 +15,7 @@ COPY shared/ ./shared/
 WORKDIR /app/shared
 RUN npm install && npm run build
 
-# ── Stage 2: Runtime ──────────────────────────────────────────────────
-# Copy and build the service
+# ── Stage 2: Build the service ────────────────────────────────────────
 WORKDIR /app/services/streaks
 COPY services/streaks/package*.json ./
 RUN npm install
@@ -49,7 +48,7 @@ COPY --from=builder /app/services/streaks/node_modules ./node_modules
 # Copy package.json (needed by node module resolution)
 COPY --from=builder /app/services/streaks/package.json ./
 
-# ── CRITICAL: copy SQL migration files ────────────────────────────────
+# ── CRITICAL: copy SQL migration files ─────────────────
 # migrate.js reads SQL files at runtime using:
 #   path.join(process.cwd(), "src/db/migrations")
 # process.cwd() = WORKDIR = /app

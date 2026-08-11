@@ -1,154 +1,128 @@
-import { v4 as uuid } from "uuid";
 import { kafka } from "./kafka.client.js";
-import { producer } from "./producer.js";
-import { connectWithRetry, SessionCompletedEventSchema, TOPICS, UserDeletedEventSchema } from "@langphy/shared";
-import { EventIndexModel } from "../models/eventIndex.model.js";
-import { StreakRepo } from "../repos/streaks.repo.js";
-import { DeletedUsersRepo } from "../repos/deleted-users.repo.js";
+import { connectWithRetry } from "@langphy/shared";
+import {
+    SessionCompletedEventSchema,
+    UserDeletedEventSchema,
+    type SessionCompletedEvent,
+    type UserDeletedEvent,
+} from "@langphy/shared";
+import { topicHandlerMap, type HandlerContext } from "./handler-registry.js";
 
-const serviceName = process.env.SERVICE_NAME! ? process.env.SERVICE_NAME : 'streaks-service';
-const consumerGroupId = serviceName + '-group';
+const serviceName = process.env.SERVICE_NAME || "streaks-service";
+const consumerGroupId = `${serviceName}-group`;
 
 export const consumer = kafka.consumer({
     groupId: consumerGroupId,
-    sessionTimeout: 30000, // 30 seconds — adjust based on expected processing time
-    heartbeatInterval: 3000, // 3 seconds — should be less than sessionTimeout
-    // maxWaitTimeInMs: 5000, // 5 seconds — how long to wait for a batch of messages
-    maxBytesPerPartition: 1048576, // 1 MB — adjust based on message size
-    retry: {
-        retries: 5,
-    },
+    sessionTimeout: 30_000,
+    heartbeatInterval: 3_000,
+    maxBytesPerPartition: 1_048_576,
+    retry: { retries: 5 },
 });
 
-// ✅ Safe helper — handles Invalid Date objects from z.coerce.date()
-const toSafeISOString = (val: unknown): string => {
-    if (val instanceof Date) {
-        return isNaN(val.getTime()) ? new Date().toISOString() : val.toISOString();
-    }
-    const d = new Date(val as string);
-    return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
-};
-
 export const initConsumer = async () => {
-    await connectWithRetry( consumer, serviceName );
+    await connectWithRetry(consumer, serviceName);
 
     await consumer.subscribe({
-        topic: TOPICS.SESSION_COMPLETED,
-        fromBeginning: false
+        topic: "session.completed.v1",
+        fromBeginning: false,
     });
-
     await consumer.subscribe({
-        topic: TOPICS.USER_DELETED,
-        fromBeginning: false
+        topic: "user.deleted.v1",
+        fromBeginning: false,
     });
 
     await consumer.run({
-        autoCommit: false, // we'll commit manually after processing each message
-        eachMessage: async ( { topic, message } ) => {
-            if( !message.value ) return;
+        // We commit offsets MANUALLY after a handler returns successfully.
+        autoCommit: false,
+        eachMessage: async ({ topic, partition, message }) => {
+            const offset = message.offset;
+            const rawValue = message.value?.toString();
 
-            const raw = JSON.parse( message.value!.toString() );
-            if (!raw.event_id || !raw.event_type) {
-                console.warn(`[Streak Consumer] Skipping malformed message on ${topic}`);
+            if (!rawValue) {
+                console.warn(
+                    `[streaks-consumer] empty message on ${topic}; skipping`,
+                );
+                // No data to process; safe to advance the offset.
+                await commit(topic, partition, offset);
                 return;
             }
 
-            if ( topic === TOPICS.SESSION_COMPLETED ) {
-                try {
-                    const event = SessionCompletedEventSchema.parse( raw );
-                    // 1️⃣ Idempotency
-                    if( await EventIndexModel.exists( event.event_id ) ) return;
-                    if( await DeletedUsersRepo.exists( event.user_id ) ) return;
+            const ctx: HandlerContext = { topic, partition, offset };
 
-                    // const safeOccurredAt = event.occurred_at instanceof Date 
-                    //                             ? event.occurred_at.toISOString() 
-                    //                             : new Date(event.occurred_at).toISOString();
-                    const safeOccurredAt = toSafeISOString(event.occurred_at);
-
-                    // 2️⃣ Apply streak logic
-                    const result = await StreakRepo.applyActivity({ userId: event.user_id });
-    
-                    // 3️⃣ Emit only if something changed
-                    if( result.updated ) {
-                        await producer.send({
-                            topic: TOPICS.STREAK_UPDATED,
-                            messages: [
-                                {
-                                    key: event.user_id,
-                                    value: JSON.stringify({
-                                        event_type: "streak.updated.v1",
-                                        event_id: uuid(),
-                                        event_version: 1,
-                                        user_id: event.user_id,
-                                        occurred_at: safeOccurredAt,
-                                        payload: {
-                                            current_streak: result.currentStreak,
-                                            longest_streak: result.longestStreak,
-                                            celebration: result.celebration,
-                                            last_activity_date: result.lastActivityDate 
-                                                ? toSafeISOString(result.lastActivityDate) 
-                                                : null,
-                                            is_active: result.is_active
-                                        },
-                                    }),
-                                },
-                            ],
-                        });
-                    }
-    
-                    // 4️⃣ Mark inbox
-                    await EventIndexModel.markProcessed({
-                        event_id: event.event_id,
-                        event_type: event.event_type,
-                        event_version: event.event_version,
-                        user_id: event.user_id,
-                        // FIX: Convert to ISO string to satisfy the Postgres 'occurred_at' column
-                        occurred_at: safeOccurredAt,
-                        payload: event.payload // Updated to event.payload | previously it was event which is the entire event object, but we should only store the payload to save space and because that's all we need for idempotency checks
-                    });
-                }
-                catch(error) {
-                    // Log and skip — don't rethrow, so KafkaJS commits the offset
-                    // and moves on instead of retrying the same bad message forever
-                    console.error(`[Streak Consumer] Skipping bad message on topic ${topic}:`, error);
-                    // Optionally write to a dead letter log for later inspection
-                    console.error(`[Streak Consumer] Raw message was:`, JSON.stringify(raw));
-                }
+            let raw: unknown;
+            try {
+                raw = JSON.parse(rawValue);
+            } catch (parseErr) {
+                // Malformed JSON — log + skip. Re-delivery would never
+                // fix this.
+                console.error(
+                    `[streaks-consumer] malformed JSON on ${topic}, dropping:`,
+                    parseErr,
+                );
+                await commit(topic, partition, offset);
+                return;
             }
 
-            if ( topic === TOPICS.USER_DELETED ) {
-                try {
-                    const event = UserDeletedEventSchema.parse( raw );
-                    if ( await EventIndexModel.exists( event.event_id ) ) return;
-                    // const safeOccurredAt = event.occurred_at instanceof Date 
-                    //                             ? event.occurred_at.toISOString() 
-                    //                             : new Date(event.occurred_at).toISOString();
-
-                    const safeOccurredAt = toSafeISOString(event.occurred_at);
-
-                    await DeletedUsersRepo.insert( event.user_id );
-                    await StreakRepo.deleteStreak( event.user_id );
-                    await EventIndexModel.markProcessed({
-                        event_id: event.event_id,
-                        event_type: event.event_type,
-                        event_version: event.event_version,
-                        user_id: event.user_id,
-                        // FIX: Convert to ISO string to satisfy the Postgres 'occurred_at' column
-                        occurred_at: safeOccurredAt,
-                        payload: event.payload
-                    });
-
-                    console.log( "🗑 Streak deleted for:", event.user_id );
-                }
-                catch(error) {
-                    // Log and skip — don't rethrow, so KafkaJS commits the offset
-                    // and moves on instead of retrying the same bad message forever
-                    console.error(`[Streak Consumer] Skipping bad message on topic ${topic}:`, error);
-                    // Optionally write to a dead letter log for later inspection
-                    console.error(`[Streak Consumer] Raw message was:`, JSON.stringify(raw));
-                }
+            const handler = topicHandlerMap[topic];
+            if (!handler) {
+                console.warn(
+                    `[streaks-consumer] no handler for ${topic}; skipping`,
+                );
+                await commit(topic, partition, offset);
+                return;
             }
-            
+
+            try {
+                if (topic === "session.completed.v1") {
+                    const event = SessionCompletedEventSchema.parse(raw);
+                    await handler.handle(event, ctx);
+                } else if (topic === "user.deleted.v1") {
+                    const event = UserDeletedEventSchema.parse(raw);
+                    await handler.handle(event, ctx);
+                } else {
+                    console.warn(
+                        `[streaks-consumer] unhandled topic ${topic}; skipping`,
+                    );
+                }
+                // Successful handler → safe to commit.
+                await commit(topic, partition, offset);
+            } catch (err) {
+                // Schema parse error or handler failure. DO NOT commit —
+                // let Kafka re-deliver. We still log the raw payload so
+                // a DLQ-style investigation is possible.
+                console.error(
+                    `[streaks-consumer] handler failed for ${topic} at ${partition}:${offset}:`,
+                    err,
+                );
+                console.error(
+                    `[streaks-consumer] raw message: ${rawValue}`,
+                );
+                // Re-throw so the consumer's retry/backoff kicks in for
+                // transient errors. Schema errors will keep failing —
+                // that's the cost of having no DLQ; future work can add
+                // one (TOPICS.STREAK_UPDATED_DLQ already exists).
+                throw err;
+            }
         },
     });
 };
+
+/**
+ * Commit the offset for a single (topic, partition) using the
+ * "next-offset" convention: Kafka expects the offset of the NEXT
+ * message to consume, not the one we just processed.
+ */
+async function commit(
+    topic: string,
+    partition: number,
+    offset: string,
+): Promise<void> {
+    const next = (BigInt(offset) + 1n).toString();
+    await consumer.commitOffsets([
+        { topic, partition, offset: next },
+    ]);
+}
+
+// Keep type-only exports so handler files can still reference these
+// symbols if they need to.
+export type { SessionCompletedEvent, UserDeletedEvent };

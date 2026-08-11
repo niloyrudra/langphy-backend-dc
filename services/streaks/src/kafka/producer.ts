@@ -1,32 +1,39 @@
 import { TOPICS, type StreakUpdatedEvent } from "@langphy/shared";
 import { kafka } from "./kafka.client.js";
 
+/**
+ * Initialised by `initProducer()`. The consumer's SessionCompletedHandler
+ * uses this directly so its tests can target the same object.
+ */
 export const producer = kafka.producer();
 
+let started = false;
+
 export const initProducer = async () => {
-  await producer.connect();
-  console.log( `[${process.env.SERVICE_NAME!}] Kafka producer connected` );
+    if (started) return;
+    await producer.connect();
+    started = true;
+    console.log(
+        `[${process.env.SERVICE_NAME || "streaks-service"}] Kafka producer connected`,
+    );
 };
 
 export const shutdownProducer = async () => {
-  await producer.disconnect();
-  console.log( `[${process.env.SERVICE_NAME!}] Kafka producer disconnected` );
+    if (!started) return;
+    await producer.disconnect();
+    started = false;
+    console.log(
+        `[${process.env.SERVICE_NAME || "streaks-service"}] Kafka producer disconnected`,
+    );
 };
 
-export const publishStreakEvent = async ( topic: string, payload: any ) => {
-  await producer.send({
-    topic,
-    messages: [
-      {value: JSON.stringify( payload )}
-    ]
-  });
-};
-
+/**
+ * Low-level send used by the consumer handler. Kept as a thin wrapper
+ * so the handler doesn't have to know the topic string.
+ */
 export const publishStreakUpdated = async (event: StreakUpdatedEvent) => {
-  await producer.send({
-    topic: TOPICS.STREAK_UPDATED,
-    messages: [
-      { value: JSON.stringify(event) }
-    ],
-  });
+    await producer.send({
+        topic: TOPICS.STREAK_UPDATED,
+        messages: [{ key: event.user_id, value: JSON.stringify(event) }],
+    });
 };

@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "verbatimModuleSyntax": false,
+    "esModuleInterop": true,
+    "isolatedModules": false,
+    "baseUrl": ".",
+    "paths": {
+      "@langphy/shared": ["../../shared/index.ts"],
+      "@langphy/shared/*": ["../../shared/src/*"],
+      "@shared/*": ["../../shared/src/*"]
+    }
+  },
+  "include": ["src/**/*", "tests/**/*", "jest.config.cjs"]
+}

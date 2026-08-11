@@ -1,76 +1,61 @@
-import type { Request, Response, NextFunction } from "express";
-import { StreakModel } from "../models/streaks.model.js";
-import { param, validationResult } from "express-validator";
+import type { Response, NextFunction } from "express";
 import type { AuthRequest } from "../middlewares/require-auth.js";
+import { StreakModel, type UserStreak } from "../models/streaks.model.js";
+import { StreakMilestonesModel } from "../models/streak-milestones.model.js";
+import { NotFoundError } from "../errors/no-find-errors.js";
+import { NotAuthorizedError } from "../errors/not-authorized-errors.js";
 
-export const getStreakController = async (req: AuthRequest, res: Response, next: NextFunction) => {
-    try {
-        const userId = req.user?.id;
-        if (!userId) {
-            return res.status(400).json({ message: "userId is required" });
-        }
-        const user_id = typeof userId == 'string' ? userId : '';
-        const streak = await StreakModel.getStreak(user_id);
+export interface StreakView {
+    current_streak: number;
+    longest_streak: number;
+    last_activity_date: string | null;
+    user_timezone: string;
+    is_active: boolean;
+    next_milestone: { days: number; label: string } | null;
+    just_crossed: string | null;
+}
 
-        if (!streak) {
-            return res.status(404).json({ message: "Streak not found" });
-        }
-
-        res.status(200).json({
-            message: "Streak fetched successfully",
-            streak
-        });
-    } catch (err) {
-        console.error("Get streak error:", err);
-        next(err);
+/**
+ * GET /api/streaks — return the authenticated user's current streak.
+ *
+ * Always throws on failure; the global errorHandler converts to JSON.
+ */
+export const getStreakController = async (
+    req: AuthRequest,
+    res: Response,
+    _next: NextFunction,
+) => {
+    const userId = req.user?.id;
+    if (!userId) {
+        // requireAuth should have already rejected, but guard anyway.
+        throw new NotAuthorizedError("Missing user");
     }
+
+    const streak = await StreakModel.findByUserId(userId);
+    if (!streak) {
+        throw new NotFoundError("Streak not found");
+    }
+
+    const view = await toStreakView(streak);
+    res.status(200).json({
+        message: "Streak fetched successfully",
+        streak: view,
+    });
 };
 
-export const createStreakController = async (req: AuthRequest, res: Response, next: NextFunction) => {
-    try {
-        const userId = req.user?.id;
-        if (!userId) {
-            return res.status(400).json({ message: "userId is required" });
-        }
-        const user_id = typeof userId == 'string' ? userId : '';
-        const streak = await StreakModel.createStreak(user_id);
-        console.log("✅ Streak created for user:", user_id);
-
-        res.status(201).json({
-            message: "Streak created successfully",
-            streak
-        });
-    } catch (err: any) {
-        if (err.message.includes("already exists")) {
-            return res.status(400).json({ message: err.message });
-        }
-        console.error("Create streak error:", err);
-        next(err);
-    }
-};
-
-export const updateStreakController = async (req: AuthRequest, res: Response, next: NextFunction) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
-
-        const userId = req.user?.id;
-        if (!userId) {
-            return res.status(400).json({ message: "userId is required" });
-        }
-        const user_id = typeof userId == 'string' ? userId : '';
-
-        const streak = await StreakModel.updateStreak(user_id);
-        console.log("✅ Streak updated for user:", user_id);
-
-        res.status(200).json({
-            message: "Streak updated successfully",
-            streak
-        });
-    } catch (err) {
-        console.error("Update streak error:", err);
-        next(err);
-    }
-};
+async function toStreakView(streak: UserStreak): Promise<StreakView> {
+    const milestones = await StreakMilestonesModel.getMilestones();
+    const sorted = [...milestones].sort((a, b) => a.days - b.days);
+    const next = sorted.find((m) => m.days > streak.current_streak) ?? null;
+    return {
+        current_streak: streak.current_streak,
+        longest_streak: streak.longest_streak,
+        last_activity_date: streak.last_activity_date,
+        user_timezone: streak.user_timezone,
+        is_active: streak.current_streak > 0,
+        next_milestone: next
+            ? { days: next.days, label: next.label }
+            : null,
+        just_crossed: null, // Reserved for future "you just hit a milestone" UX; not persisted.
+    };
+}

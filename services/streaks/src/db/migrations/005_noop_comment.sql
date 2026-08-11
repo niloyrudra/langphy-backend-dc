@@ -1,0 +1,14 @@
+-- ─────────────────────────────────────────────────────────────────────────
+-- No-op placeholder migration.
+--
+-- Documents that lp_streaks.last_activity_date remains DATE (not
+-- TIMESTAMPTZ) intentionally. The streak service does all "day
+-- arithmetic" in the user's timezone via domain/streak-math.ts before
+-- hitting SQL, so the DB column only needs calendar-day precision.
+--
+-- Keeping this file so the migration numbering is stable for future
+-- authors and to make the intent explicit instead of relying on "absence
+-- of change".
+-- ─────────────────────────────────────────────────────────────────────────
+
+-- (intentionally empty)

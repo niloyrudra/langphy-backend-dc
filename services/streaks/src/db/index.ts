@@ -1,24 +1,35 @@
 import { Pool } from "pg";
+import { parsePgConfig } from "@langphy/shared";
+
+/**
+ * Connection pool for the streaks service.
+ *
+ * - Reads POSTGRES_DATABASE_URL (Neon) or falls back to PG_HOST/PG_PORT/PG_USER/PG_PASSWORD/PG_DB.
+ * - SSL is REQUIRED (rejectUnauthorized: true) — Neon terminates TLS at the gateway.
+ * - application_name is set so connections show up as `langphy-streaks`
+ *   in the Neon dashboard.
+ * - Pool sizing: max 10 keeps us well under Neon's per-database limit;
+ *   idleTimeout recycles connections so we don't burn minutes on a
+ *   stale socket.
+ *
+ * For transaction work (applyActivity, deleteStreakWithTombstone) call
+ * `await pgPool.connect()` to obtain a dedicated client.
+ */
+const cfg = parsePgConfig({ serviceName: "langphy-streaks" });
 
 export const pgPool = new Pool({
-    host: process.env.PG_HOST,
-    port: Number(process.env.PG_PORT),
-    database: process.env.PG_DB,
-    user: process.env.PG_USER,
-    password: process.env.PG_PASSWORD,
-    ssl: false,
+    connectionString: cfg.connectionString,
+    application_name: cfg.application_name,
+    ssl: { rejectUnauthorized: true },
+    max: 10,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 5_000,
 });
 
-pgPool.on( 'connect', () => console.log( "✅ Connect to Streaks PostgreSQl" ));
+pgPool.on("connect", () => {
+    console.log("✅ Connected to PostgreSQL (streaks)");
+});
 
-// export async function connectDB() {
-//     // Force at least one connection at startup
-//     await pgPool.query("select 1");
-//     console.log("✅ Connected to Streaks PostgreSQL");
-// }
-
-// export async function disconnectDB() {
-//     console.log("🛑 Closing PostgreSQL pool");
-//     await pgPool.end();
-//     console.log("✅ PostgreSQL pool closed");
-// }
+pgPool.on("error", (err) => {
+    console.error("STREAKS — Unexpected error on idle PostgreSQL client", err);
+});
