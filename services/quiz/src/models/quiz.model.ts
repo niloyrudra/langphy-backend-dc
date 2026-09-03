@@ -45,8 +45,15 @@ export const Quiz = createContentModel({
             required: true,
         },
         options: {
-            type: [String, String, String, String],
+            type: [String],
             required: true,
+            validate: {
+                validator: (v: unknown[]) =>
+                    Array.isArray(v) &&
+                    v.length === 4 &&
+                    v.every((x) => typeof x === "string" && x.trim().length > 0),
+                message: "options must be exactly 4 non-empty strings",
+            },
         },
     },
 });
