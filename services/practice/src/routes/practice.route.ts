@@ -1,9 +1,11 @@
-import { Router } from "express";
-import { getAllPracticeLessons, getPracticeLessonsByCategoryAndUnitIds } from "../controllers/practice.controller.js";
+import { createContentRouter } from "@langphy/shared/content";
+import { practiceControllers } from "../controllers/practice.controller.js";
 
-const router = Router();
-
-router.get( "/api/practices", getAllPracticeLessons );
-router.get( "/api/practices/:categoryId/:unitId", getPracticeLessonsByCategoryAndUnitIds );
-
-export { router as practiceRouter };
+/**
+ * Practice routes. ⚠️ `/version` is registered before the
+ * `/:categoryId/:unitId` param route so string ids never swallow it.
+ */
+export const practiceRouter = createContentRouter({
+    basePath: "/api/practices",
+    controllers: practiceControllers,
+});

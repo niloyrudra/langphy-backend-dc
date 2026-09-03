@@ -1,49 +1,32 @@
-import mongoose, { Model, Schema } from "mongoose";
-import type { InferSchemaType } from "mongoose";
+import { createContentModel } from "@langphy/shared/content";
 
 /**
- * 1️⃣ Schema (single source of truth)
+ * Practice schema — the service-specific part. The schema fields stay here;
+ * the active-collection pointer + `InferSchemaType`/`model<>` boilerplate now
+ * live in the shared `createContentModel` factory.
  */
-const practiceSchema = new Schema(
-    {
-        _id: {
-            type: String,
-            required: true
-        },
+export const Practice = createContentModel({
+    modelName: "Practice",
+    collectionEnv: "PRACTICE_COLLECTION",
+    defaultCollection: "practices",
+    timestamps: false,
+    fields: {
+        // _id: default Mongoose ObjectId (live data stores ObjectId; keep default)
         categoryId: {
             type: String,
-            required: true
+            required: true,
         },
         unitId: {
             type: String,
-            required: true
+            required: true,
         },
         title: {
             type: String,
-            required: true
+            required: true,
         },
         slug: {
             type: String,
-            required: true
+            required: true,
         },
     },
-    {
-        collection: "practices",
-        timestamps: false
-    }
-);
-
-/**
- * 2️⃣ Infer TypeScript type directly from schema
- */
-export type PracticeDoc = InferSchemaType<typeof practiceSchema>;
-
-/**
- * 3️⃣ Typed model
- */
-const Practice: Model<PracticeDoc> = mongoose.model<PracticeDoc>(
-    "Practice",
-    practiceSchema
-);
-
-export { Practice };
+});
