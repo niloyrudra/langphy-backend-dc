@@ -1,9 +1,11 @@
-import { Router } from "express";
-import { getAllListeningLessons, getListeningLessonsByCategoryAndUnitIds } from "../controllers/listening.controller.js";
+import { createContentRouter } from "@langphy/shared/content";
+import { listeningControllers } from "../controllers/listening.controller.js";
 
-const router = Router();
-
-router.get( "/api/listening", getAllListeningLessons );
-router.get( "/api/listening/:categoryId/:unitId", getListeningLessonsByCategoryAndUnitIds );
-
-export { router as listeningRouter };
+/**
+ * Listening routes. ⚠️ `/version` is registered before the
+ * `/:categoryId/:unitId` param route so string ids never swallow it.
+ */
+export const listeningRouter = createContentRouter({
+    basePath: "/api/listening",
+    controllers: listeningControllers,
+});

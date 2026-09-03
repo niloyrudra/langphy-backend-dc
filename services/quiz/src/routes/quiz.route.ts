@@ -1,9 +1,11 @@
-import { Router } from "express";
-import { getAllQuizzes, getQuizzesByCategoryAndUnitIds } from "../controllers/quiz.controller.js";
+import { createContentRouter } from "@langphy/shared/content";
+import { quizControllers } from "../controllers/quiz.controller.js";
 
-const router = Router();
-
-router.get( "/api/quizzes", getAllQuizzes );
-router.get( "/api/quizzes/:categoryId/:unitId", getQuizzesByCategoryAndUnitIds );
-
-export { router as quizRouter };
+/**
+ * Quiz routes. ⚠️ `/version` is registered before the `/:categoryId/:unitId`
+ * param route so string ids never swallow it.
+ */
+export const quizRouter = createContentRouter({
+    basePath: "/api/quizzes",
+    controllers: quizControllers,
+});

@@ -1,69 +1,52 @@
-import mongoose, { Model, Schema } from "mongoose";
-import type { InferSchemaType } from "mongoose";
+import { createContentModel } from "@langphy/shared/content";
 
 /**
- * 1️⃣ Schema (single source of truth)
+ * Quiz schema — the service-specific part. The schema fields stay here;
+ * the active-collection pointer + `InferSchemaType`/`model<>` boilerplate now
+ * live in the shared `createContentModel` factory.
  */
-const quizSchema = new Schema(
-    {
-        _id: {
-            type: String,
-            required: true
-        },
+export const Quiz = createContentModel({
+    modelName: "Quiz",
+    collectionEnv: "QUIZ_COLLECTION",
+    defaultCollection: "quizzes",
+    timestamps: false,
+    fields: {
+        // _id: default Mongoose ObjectId (live data stores ObjectId; keep default)
         categoryId: {
             type: String,
-            required: true
+            required: true,
         },
         unitId: {
             type: String,
-            required: true
+            required: true,
         },
         unit_title: {
             type: String,
-            required: true
+            required: true,
         },
         level: {
             type: String,
-            required: true
+            required: true,
         },
         difficulty: {
             type: String,
-            required: true
+            required: true,
         },
         question: {
             type: String,
-            required: true
+            required: true,
         },
         answer: {
             type: String,
-            required: true
+            required: true,
         },
         answer_explanation: {
             type: String,
-            required: true
+            required: true,
         },
         options: {
             type: [String, String, String, String],
-            required: true
+            required: true,
         },
     },
-    {
-        collection: "quizzes",
-        timestamps: false
-    }
-);
-
-/**
- * 2️⃣ Infer TypeScript type directly from schema
- */
-export type QuizDoc = InferSchemaType<typeof quizSchema>;
-
-/**
- * 3️⃣ Typed model
- */
-const Quiz: Model<QuizDoc> = mongoose.model<QuizDoc>(
-    "Quiz",
-    quizSchema
-);
-
-export { Quiz };
+});

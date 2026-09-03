@@ -1,65 +1,48 @@
-import mongoose, { Model, Schema } from "mongoose";
-import type { InferSchemaType } from "mongoose";
+import { createContentModel } from "@langphy/shared/content";
 
 /**
- * 1️⃣ Schema (single source of truth)
+ * Listening lesson schema — the service-specific part. The schema fields stay
+ * here; the active-collection pointer + `InferSchemaType`/`model<>` boilerplate
+ * now live in the shared `createContentModel` factory.
  */
-const listeningLessonSchema = new Schema(
-    {
-        _id: {
-            type: String,
-            required: true
-        },
+export const Listening = createContentModel({
+    modelName: "Listening",
+    collectionEnv: "LISTENING_COLLECTION",
+    defaultCollection: "listenings",
+    timestamps: false,
+    fields: {
+        // _id: default Mongoose ObjectId (live data stores ObjectId; keep default)
         categoryId: {
             type: String,
-            required: true
+            required: true,
         },
         unitId: {
             type: String,
-            required: true
+            required: true,
         },
         phrase: {
             type: String,
-            required: true
+            required: true,
         },
         meaning: {
             type: String,
-            required: true
+            required: true,
         },
         german_level: {
             type: String,
-            required: true
+            required: true,
         },
         formality: {
             type: String,
-            required: true
+            required: true,
         },
         region: {
             type: String,
-            required: true
+            required: true,
         },
         usage_context: {
             type: String,
-            required: true
-        }
+            required: true,
+        },
     },
-    {
-        collection: "listenings",
-        timestamps: false
-    }
-);
-
-/**
- * 2️⃣ Infer TypeScript type directly from schema
- */
-export type ListeningLessonDoc = InferSchemaType<typeof listeningLessonSchema>;
-
-/**
- * 3️⃣ Typed model
- */
-const Listening: Model<ListeningLessonDoc> = mongoose.model<ListeningLessonDoc>(
-    "Listening",
-    listeningLessonSchema
-);
-
-export { Listening };
+});

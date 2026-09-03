@@ -1,9 +1,12 @@
-import { Router } from "express";
-import { getUnits, getUnitsByCategoryId } from "../controllers/unit.controller.js";
+import { createContentRouter } from "@langphy/shared/content";
+import { unitControllers } from "../controllers/unit.controller.js";
 
-const router = Router();
-
-router.get( "/api/unit", getUnits );
-router.get( "/api/unit/:categoryId", getUnitsByCategoryId );
-
-export { router as unitRouter };
+/**
+ * Unit routes. ⚠️ `/version` is registered before the `/:categoryId` param
+ * route so string ids never swallow it.
+ */
+export const unitRouter = createContentRouter({
+    basePath: "/api/unit",
+    controllers: unitControllers,
+    paramRoute: "/:categoryId",
+});

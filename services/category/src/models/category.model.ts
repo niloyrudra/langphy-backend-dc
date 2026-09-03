@@ -1,15 +1,17 @@
-import mongoose, { Schema, Model } from "mongoose";
-import type { InferSchemaType } from "mongoose";
+import { createContentModel } from "@langphy/shared/content";
 
 /**
- * 1️⃣ Schema (single source of truth)
+ * Category schema — the service-specific part. The schema fields stay here;
+ * the active-collection pointer + `InferSchemaType`/`model<>` boilerplate now
+ * live in the shared `createContentModel` factory.
  */
-const categorySchema = new Schema(
-    {
-        _id: {
-            type: String,
-            required: true,
-        },
+export const Category = createContentModel({
+    modelName: "Category",
+    collectionEnv: "CATEGORY_COLLECTION",
+    defaultCollection: "categories",
+    timestamps: false,
+    fields: {
+        // _id: default Mongoose ObjectId (live data stores ObjectId; keep default)
         title: {
             type: String,
             required: true,
@@ -23,23 +25,4 @@ const categorySchema = new Schema(
             required: true,
         },
     },
-    {
-        collection: "categories",
-        timestamps: false,
-    }
-);
-
-/**
- * 2️⃣ Infer TypeScript type directly from schema
- */
-export type CategoryDoc = InferSchemaType<typeof categorySchema>;
-
-/**
- * 3️⃣ Typed model
- */
-const Category: Model<CategoryDoc> = mongoose.model<CategoryDoc>(
-  "Category",
-  categorySchema
-);
-
-export { Category };
+});

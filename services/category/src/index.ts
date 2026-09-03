@@ -1,20 +1,10 @@
-import express from "express";
-// import cors from "cors";
-import pkg from "body-parser";
-import { connectMongo } from "./db/index.js";
+import { bootstrapContentService } from "@langphy/shared/content";
 import { categoryRouter } from "./routes/category.route.js";
-const { json } = pkg;
 
-
-const app = express();
-
-// app.use(cors());
-app.use( json() );
-
-app.use( categoryRouter );
-app.all( "*", async ( req, res ) => { throw new Error("404!") } );
-
-connectMongo();
-
-const PORT: number = parseInt(process.env.PORT || "4000", 10);
-app.listen( PORT, '::', () => console.log( `Category service listening on port ${PORT}.` ) );
+await bootstrapContentService({
+    router: categoryRouter,
+    mongoEnvVar: "CATEGORY_MONGO_URI",
+    serviceName: "Category",
+    mongoLabel: "Category",
+    defaultPort: 4000,
+});
