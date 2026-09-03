@@ -219,6 +219,8 @@ services:
     restart: unless-stopped
     environment:
       READING_MONGO_URI: ${MONGO_URI}
+      READING_COLLECTION: ${READING_COLLECTION:-readings}
+      READING_CONTENT_VERSION: ${READING_CONTENT_VERSION:-1}
     networks:
       - langphy
 

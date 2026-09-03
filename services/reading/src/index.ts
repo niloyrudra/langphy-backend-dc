@@ -1,20 +1,10 @@
-import express from "express";
-import cors from "cors";
-import pkg from "body-parser";
-import { connectMongo } from "./db/index.js";
+import { bootstrapContentService } from "@langphy/shared/content";
 import { readingRouter } from "./routes/reading.route.js";
-const { json } = pkg;
 
-
-const app = express();
-
-app.use(cors());
-app.use( json() );
-
-app.use( readingRouter );
-// app.all( "*", async ( req, res ) => { throw new Error("404!") } );
-
-connectMongo();
-
-const PORT: number = parseInt(process.env.PORT || "4005", 10);
-app.listen( PORT, '::', () => console.log( `Reading service listening on port ${PORT}.` ) );
+await bootstrapContentService({
+    router: readingRouter,
+    mongoEnvVar: "READING_MONGO_URI",
+    serviceName: "Reading",
+    mongoLabel: "Reading",
+    defaultPort: 4005,
+});
