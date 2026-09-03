@@ -68,6 +68,7 @@ services:
       <<: [*pg, *kafka, *jwt]
       SERVICE_NAME: auth-service
       PG_DB: langphy_auth
+      POSTGRES_DATABASE_URL: ${AUTH_POSTGRES_DATABASE_URL:-}
       RESEND_API_KEY: ${RESEND_API_KEY}
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
     networks:
@@ -83,6 +84,7 @@ services:
       <<: [*pg, *kafka, *jwt]
       SERVICE_NAME: streaks-service
       PG_DB: langphy_streaks
+      POSTGRES_DATABASE_URL: ${STREAKS_POSTGRES_DATABASE_URL:-}
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
     networks:
       - langphy
@@ -97,6 +99,7 @@ services:
       <<: [*pg, *kafka, *jwt]
       SERVICE_NAME: progress-service
       PG_DB: langphy_progress
+      POSTGRES_DATABASE_URL: ${PROGRESS_POSTGRES_DATABASE_URL:-}
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
     networks:
       - langphy
@@ -111,6 +114,7 @@ services:
       <<: [*pg, *kafka, *jwt]
       SERVICE_NAME: performance-service
       PG_DB: langphy_performance
+      POSTGRES_DATABASE_URL: ${PERFORMANCE_POSTGRES_DATABASE_URL:-}
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
     networks:
       - langphy
@@ -125,6 +129,7 @@ services:
       <<: [*pg, *kafka, *jwt]
       SERVICE_NAME: profile-service
       PG_DB: langphy_profile
+      POSTGRES_DATABASE_URL: ${PROFILE_POSTGRES_DATABASE_URL:-}
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
     networks:
       - langphy
@@ -139,6 +144,7 @@ services:
       <<: [*pg, *kafka, *jwt]
       SERVICE_NAME: settings-service
       PG_DB: langphy_settings
+      POSTGRES_DATABASE_URL: ${SETTINGS_POSTGRES_DATABASE_URL:-}
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
     networks:
       - langphy
@@ -153,6 +159,7 @@ services:
       <<: [*pg, *kafka, *jwt]
       SERVICE_NAME: notification-service
       PG_DB: langphy_notification
+      POSTGRES_DATABASE_URL: ${NOTIFICATION_POSTGRES_DATABASE_URL:-}
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
     networks:
       - langphy
@@ -168,6 +175,7 @@ services:
       SERVICE_NAME: gateway-service
       NODE_ENV: production
       PG_DB: langphy_gateway
+      POSTGRES_DATABASE_URL: ${GATEWAY_POSTGRES_DATABASE_URL:-}
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
     networks:
       - langphy
@@ -179,6 +187,8 @@ services:
     restart: unless-stopped
     environment:
       CATEGORY_MONGO_URI: ${MONGO_URI}
+      CATEGORY_COLLECTION: ${CATEGORY_COLLECTION:-categories}
+      CATEGORY_CONTENT_VERSION: ${CATEGORY_CONTENT_VERSION:-1}
     networks:
       - langphy
 
@@ -187,6 +197,8 @@ services:
     restart: unless-stopped
     environment:
       UNIT_MONGO_URI: ${MONGO_URI}
+      UNIT_COLLECTION: ${UNIT_COLLECTION:-units}
+      UNIT_CONTENT_VERSION: ${UNIT_CONTENT_VERSION:-1}
     networks:
       - langphy
 
@@ -195,6 +207,8 @@ services:
     restart: unless-stopped
     environment:
       PRACTICE_MONGO_URI: ${MONGO_URI}
+      PRACTICE_COLLECTION: ${PRACTICE_COLLECTION:-practices}
+      PRACTICE_CONTENT_VERSION: ${PRACTICE_CONTENT_VERSION:-1}
     networks:
       - langphy
 
@@ -203,6 +217,8 @@ services:
     restart: unless-stopped
     environment:
       QUIZ_MONGO_URI: ${MONGO_URI}
+      QUIZ_COLLECTION: ${QUIZ_COLLECTION:-quizzes}
+      QUIZ_CONTENT_VERSION: ${QUIZ_CONTENT_VERSION:-1}
     networks:
       - langphy
 
@@ -211,6 +227,8 @@ services:
     restart: unless-stopped
     environment:
       SPEAKING_MONGO_URI: ${MONGO_URI}
+      SPEAKING_COLLECTION: ${SPEAKING_COLLECTION:-speakings}
+      SPEAKING_CONTENT_VERSION: ${SPEAKING_CONTENT_VERSION:-1}
     networks:
       - langphy
 
@@ -229,6 +247,8 @@ services:
     restart: unless-stopped
     environment:
       WRITING_MONGO_URI: ${MONGO_URI}
+      WRITING_COLLECTION: ${WRITING_COLLECTION:-writings}
+      WRITING_CONTENT_VERSION: ${WRITING_CONTENT_VERSION:-1}
     networks:
       - langphy
 
@@ -237,6 +257,8 @@ services:
     restart: unless-stopped
     environment:
       LISTENING_MONGO_URI: ${MONGO_URI}
+      LISTENING_COLLECTION: ${LISTENING_COLLECTION:-listenings}
+      LISTENING_CONTENT_VERSION: ${LISTENING_CONTENT_VERSION:-1}
     networks:
       - langphy
 
