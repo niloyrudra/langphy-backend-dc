@@ -7,7 +7,6 @@ import {
     bulkSyncProgressController,
 } from "../controllers/progress.controller.js";
 import { requireAuth } from "../middlewares/require-auth.js";
-import { errorHandler } from "../middlewares/error-handler.js";
 
 const router = Router();
 
@@ -22,14 +21,12 @@ router.post(
         body("content_id").notEmpty(),
         body("progress_percent").isFloat({ min: 0, max: 100 }),
     ],
-    errorHandler,
     upsertProgressController
 );
 
 router.get(
     "/api/progress",
     requireAuth,
-    errorHandler,
     getUserProgressController
 );
 
@@ -37,7 +34,6 @@ router.get(
 router.post(
   "/api/progress/bulk-sync",
   requireAuth,
-  errorHandler,
   bulkSyncProgressController
 );
 

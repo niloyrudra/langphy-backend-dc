@@ -1,5 +1,13 @@
+import { type Pool } from "pg";
+import { pgPool } from "../db/index.js";
 import { SessionAttemptRepo } from "../repos/attempt.repo.js";
 import { SessionPerformanceRepo } from "../repos/sessionPerformance.repo.js";
+
+/**
+ * A `pg` object that can run queries — either the shared pool or a dedicated
+ * client obtained via `pgPool.connect()` inside a transaction.
+ */
+type Queryable = Pick<Pool, "query">;
 
 interface SessionCompletedEvent {
     user_id: string;
@@ -12,42 +20,54 @@ interface SessionCompletedEvent {
     completed_at: string | number;
 };
 
-export const handleSessionCompleted = async ( event: SessionCompletedEvent ) => {
-    try {
-        const completedAt = normalizeTimestamp(event.completed_at).toISOString();
-        const attemptId = await SessionAttemptRepo.insertOnce({
-            userId: event.user_id,
-            unitId: event.unit_id,
-            session_type: event.session_type,
-            session_key: event.session_key,
-            score: event.score,
-            attempts: event.attempts,
-            total_duration_ms: event.total_duration_ms,
-            completed_at: completedAt
-        });
+export interface SessionCompletedResult {
+    updated: boolean;
+    reason?: "duplicate-attempt";
+}
 
-        // Retry -> do nothing
-        if( !attemptId ) return { updated: false };
+/**
+ * Applies a session.completed.v1 event to the performance tables.
+ *
+ * Duplicate attempts (a re-delivered event, detected via the
+ * (user_id, session_key) unique constraint) are an idempotent no-op and
+ * return `{ updated: false }`.
+ *
+ * @param client optional transactional client. Pass it from the Kafka
+ * consumer so the attempt insert + performance upsert run inside the SAME
+ * transaction as the event_inbox insert. Errors PROPAGATE (except the
+ * duplicate-attempt case) so the caller can ROLLBACK.
+ */
+export const handleSessionCompleted = async ( event: SessionCompletedEvent, client?: Queryable ): Promise<SessionCompletedResult> => {
+    const db = client ?? pgPool;
+    const completedAt = normalizeTimestamp(event.completed_at).toISOString();
 
-        // New Completion or redo -> replace performance
-        await SessionPerformanceRepo.upsert({
-            userId: event.user_id,
-            unitId: event.unit_id,
-            session_type: event.session_type,
-            session_key: event.session_key,
-            score: event.score,
-            attempts: event.attempts,
-            total_duration_ms: event.total_duration_ms,
-            completed_at: completedAt
-        });
+    const attemptId = await SessionAttemptRepo.insertOnceTx(db, {
+        userId: event.user_id,
+        unitId: event.unit_id,
+        session_type: event.session_type,
+        session_key: event.session_key,
+        score: event.score,
+        attempts: event.attempts,
+        total_duration_ms: event.total_duration_ms,
+        completed_at: completedAt
+    });
 
-        return { updated: true };
+    // Retry / duplicate attempt -> idempotent no-op.
+    if (!attemptId) return { updated: false, reason: "duplicate-attempt" as const };
 
-    }
-    catch(error) {
-        console.error("Performance Service handleSessionCompleted error:", error);
-        return { updated: false };
-    }
+    // New completion or redo -> replace performance row.
+    await SessionPerformanceRepo.upsertTx(db, {
+        userId: event.user_id,
+        unitId: event.unit_id,
+        session_type: event.session_type,
+        session_key: event.session_key,
+        score: event.score,
+        attempts: event.attempts,
+        total_duration_ms: event.total_duration_ms,
+        completed_at: completedAt
+    });
+
+    return { updated: true };
 }
 
 export const normalizeTimestamp = (

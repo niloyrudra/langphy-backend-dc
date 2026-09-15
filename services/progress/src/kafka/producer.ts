@@ -25,6 +25,22 @@ export const initProducer = async () => {
 };
 
 /**
+ * Disconnect the producer (flush in-flight sends). Safe to call multiple
+ * times; no-op when the producer was never initialised.
+ */
+export const shutdownProducer = async () => {
+    if (!producer) return;
+    try {
+        await producer.disconnect();
+        console.log("Progress - Kafka Producer disconnected");
+    } catch (err) {
+        console.error("Progress - Kafka Producer disconnect failed:", err);
+    } finally {
+        producer = null;
+    }
+};
+
+/**
  * Internal low-level sender
  */
 export const sendRaw = async (

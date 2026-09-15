@@ -1,4 +1,11 @@
+import { type Pool } from "pg";
 import { pgPool } from "../db/index.js";
+
+/**
+ * A `pg` object that can run queries — either the shared pool or a dedicated
+ * client obtained via `pgPool.connect()` inside a transaction.
+ */
+type Queryable = Pick<Pool, "query">;
 
 /**
  * Single source of truth for the lp_settings row shape.
@@ -40,8 +47,8 @@ export interface SettingsData {
 
 export class SettingsModel {
 
-    static async getSettings(userId: string): Promise<UserSettings | null> {
-        const result = await pgPool.query(
+    static async getSettings(userId: string, client: Queryable = pgPool): Promise<UserSettings | null> {
+        const result = await client.query(
             `SELECT * FROM lp_settings WHERE user_id = $1`,
             [userId]
         );
@@ -52,8 +59,8 @@ export class SettingsModel {
      * Called by the Kafka USER_REGISTERED consumer to seed default settings.
      * Uses ON CONFLICT DO NOTHING so re-processing the same event is safe.
      */
-    static async createSettingsIfNotExists(user_id: string): Promise<UserSettings | null> {
-        const result = await pgPool.query(
+    static async createSettingsIfNotExists(user_id: string, client: Queryable = pgPool): Promise<UserSettings | null> {
+        const result = await client.query(
             `
             INSERT INTO lp_settings (user_id, language, theme)
             VALUES ($1, 'en', 'dark')
@@ -65,8 +72,8 @@ export class SettingsModel {
         return result.rows[0] ?? null;
     }
 
-    static async updateSettings(userId: string, data: SettingsData): Promise<UserSettings> {
-        const result = await pgPool.query(
+    static async updateSettings(userId: string, data: SettingsData, client: Queryable = pgPool): Promise<UserSettings> {
+        const result = await client.query(
             `
             UPDATE lp_settings
             SET
@@ -106,16 +113,32 @@ export class SettingsModel {
         return result.rows[0];
     }
 
+    private static async runDeleteByUserId(client: Queryable, user_id: string) {
+        await client.query(
+            `DELETE FROM lp_settings WHERE user_id = $1`,
+            [user_id]
+        );
+    }
+
+    /**
+     * Legacy non-transactional path. Swallows DB errors and reports success
+     * as a boolean.
+     */
     static async deleteSettingsByUserId(user_id: string): Promise<boolean> {
         try {
-            await pgPool.query(
-                `DELETE FROM lp_settings WHERE user_id = $1`,
-                [user_id]
-            );
+            await SettingsModel.runDeleteByUserId(pgPool, user_id);
             return true;
         } catch (error) {
             console.error("deleteSettingsByUserId error:", error);
             return false;
         }
+    }
+
+    /**
+     * Transactional path for the Kafka consumer. Runs on the caller's client
+     * and lets errors propagate so the surrounding transaction can ROLLBACK.
+     */
+    static async deleteSettingsByUserIdTx(client: Queryable, user_id: string) {
+        await SettingsModel.runDeleteByUserId(client, user_id);
     }
 }

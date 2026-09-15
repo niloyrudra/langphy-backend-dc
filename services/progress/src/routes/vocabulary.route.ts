@@ -5,7 +5,6 @@ import {
     getVocabularyCountController,
 } from "../controllers/vocabulary.controller.js";
 import { requireAuth } from "../middlewares/require-auth.js";
-import { errorHandler } from "../middlewares/error-handler.js";
 
 const router = Router();
 
@@ -19,7 +18,6 @@ router.post(
         body("words.*.lemma").notEmpty().withMessage("lemma is required"),
         body("words.*.pos").notEmpty().withMessage("pos is required"),
     ],
-    errorHandler,
     syncVocabularyController
 );
 
@@ -27,7 +25,6 @@ router.post(
 router.get(
     "/api/vocabulary/count",
     requireAuth,
-    errorHandler,
     getVocabularyCountController
 );
 
