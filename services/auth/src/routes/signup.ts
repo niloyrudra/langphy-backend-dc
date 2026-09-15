@@ -39,6 +39,14 @@ router.post(
             .isLength({ min: 6, max: 6 })
             .isNumeric()
             .withMessage("OTP must be 6 digits"),
+        // Optional IANA timezone reported by the Expo client
+        // (e.g. "Europe/Berlin"). Forwarded into user.registered.v1 so
+        // downstream services can compute per-user day boundaries.
+        body("timezone")
+            .optional()
+            .isString()
+            .isLength({ min: 1, max: 64 })
+            .withMessage("Timezone must be an IANA string up to 64 chars"),
     ],
     validateAuth,
     verifyOtpController

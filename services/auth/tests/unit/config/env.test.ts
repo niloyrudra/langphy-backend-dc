@@ -4,7 +4,7 @@
 
 import { parsePgConfig, PgConfigError } from "@langphy/shared";
 import { validateEnv, EnvValidationError } from "../../../src/config/env";
-import { beforeEach, describe, it } from "@jest/globals";
+import { afterAll, beforeEach, describe, it } from "@jest/globals";
 
 describe("parsePgConfig", () => {
     const ORIGINAL_ENV = process.env;
@@ -115,10 +115,4 @@ describe("validateEnv", () => {
     });
 });
 
-function expect<T>(actual: T) {
-    return (globalThis as any).expect(actual);
-}
-function afterAll(arg0: () => void) {
-    throw new Error("Function not implemented.");
-}
 

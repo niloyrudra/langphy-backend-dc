@@ -8,8 +8,8 @@
     "isolatedModules": false,
     "baseUrl": ".",
     "paths": {
-      "@langphy/shared": ["../../shared/dist/index.d.ts"],
-      "@langphy/shared/*": ["../../shared/dist/*"],
+      "@langphy/shared": ["../../shared/index.ts"],
+      "@langphy/shared/*": ["../../shared/src/*"],
       "@shared/*": ["../../shared/src/*"]
     }
   },

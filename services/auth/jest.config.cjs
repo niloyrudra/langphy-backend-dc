@@ -23,6 +23,12 @@ module.exports = {
     moduleNameMapper: {
         "^(\\.{1,2}/.*)\\.js$": "$1",
         ["^@shared/(.*)$"]: path.join(SHARED_SRC, "$1"),
+        // The shared package's package.json declares "type": "module"
+        // and main: dist/index.js (ESM). Jest runs as CJS in this
+        // project, so the ESM file fails to parse. Instead, point at
+        // the source TS — ts-jest will pick it up via the resolver.
+        ["^@langphy/shared$"]: path.join(REPO_ROOT, "shared", "index.ts"),
+        ["^@langphy/shared/(.*)$"]: path.join(SHARED_SRC, "$1.ts"),
     },
     clearMocks: true,
 };

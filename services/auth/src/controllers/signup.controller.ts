@@ -65,7 +65,7 @@ export const requestOtpController = async (req: Request, res: Response) => {
 // ─────────────────────────────────────────────────────────────────────────
 
 export const verifyOtpController = async (req: Request, res: Response) => {
-    const { email, password, otp } = req.body;
+    const { email, password, otp, timezone } = req.body;
 
     if (typeof email !== "string" || typeof password !== "string" || typeof otp !== "string") {
         throw new BadRequestError("Email, password and otp are required");
@@ -105,7 +105,18 @@ export const verifyOtpController = async (req: Request, res: Response) => {
             event_version: 1,
             occurred_at: new Date(),
             user_id: user.id,
-            payload: { email, provider: "email" },
+            payload: {
+                email,
+                provider: "email",
+                // Optional IANA timezone reported by the client. Spread
+                // conditionally so the field stays absent (rather than
+                // null/undefined) when the client didn't provide one —
+                // keeping the payload shape clean for downstream
+                // consumers.
+                ...(typeof timezone === "string" && timezone.length > 0
+                    ? { timezone }
+                    : {}),
+            },
         });
 
         await client.query("COMMIT");

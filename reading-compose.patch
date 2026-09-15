@@ -1,0 +1,13 @@
+diff --git a/docker-compose.yml b/docker-compose.yml
+index f070371..d3bbc09 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -219,6 +226,8 @@ services:
+     restart: unless-stopped
+     environment:
+       READING_MONGO_URI: ${MONGO_URI}
++      READING_COLLECTION: ${READING_COLLECTION:-readings}
++      READING_CONTENT_VERSION: ${READING_CONTENT_VERSION:-1}
+     networks:
+       - langphy
+ 

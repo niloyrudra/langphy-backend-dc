@@ -1,0 +1,1 @@
+{"root":["./src/config.ts","./src/index.ts","./src/controllers/writing.controller.ts","./src/db/index.ts","./src/models/writing.model.ts","./src/routes/writing.route.ts"],"version":"5.9.3"}
