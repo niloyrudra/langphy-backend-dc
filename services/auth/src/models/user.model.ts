@@ -1,25 +1,38 @@
 import { pgPool } from "../db/index.js";
 import { BadRequestError } from "../errors/bad-request-errors.js";
 import { Password } from "../services/password.js";
+import type { PoolClient } from "pg";
 
 export interface User {
     id: string;
     email: string;
     password: string;
     provider: string;
+    provider_user_id: string | null;
     created_at: Date;
     updated_at: Date | null;
 }
 
 export type PublicUser = Omit<User, "password">;
 
-const USER_COLUMNS = "id, email, password, provider, created_at, updated_at";
+const USER_COLUMNS = "id, email, password, provider, provider_user_id, created_at, updated_at";
 
 export class UserModel {
     static async findByEmail(email: string): Promise<User | null> {
         const result = await pgPool.query<User>(
             `SELECT ${USER_COLUMNS} FROM lp_users WHERE email = $1`,
             [email]
+        );
+        if (result.rowCount === 0) return null;
+        return result.rows[0];
+    }
+
+    static async findByProvider(provider: string, providerUserId: string): Promise<User | null> {
+        const result = await pgPool.query<User>(
+            `SELECT ${USER_COLUMNS}
+             FROM lp_users
+             WHERE provider = $1 AND provider_user_id = $2`,
+            [provider, providerUserId]
         );
         if (result.rowCount === 0) return null;
         return result.rows[0];
@@ -45,6 +58,34 @@ export class UserModel {
             if (err?.code === "23505") {
                 // unique_violation
                 throw new BadRequestError("Email in use");
+            }
+            throw err;
+        }
+    }
+
+    static async createSocial(
+        client: PoolClient,
+        email: string,
+        provider: string,
+        providerUserId: string,
+        hashedPassword: string
+    ): Promise<User> {
+        try {
+            const result = await client.query<User>(
+                `INSERT INTO lp_users (email, password, provider, provider_user_id)
+                 VALUES ($1, $2, $3, $4)
+                 RETURNING ${USER_COLUMNS}`,
+                [email, hashedPassword, provider, providerUserId]
+            );
+            return result.rows[0];
+        } catch (err: any) {
+            if (err?.code === "23505") {
+                if (err.constraint === "lp_users_email_key") {
+                    throw new BadRequestError("Email in use");
+                }
+                if (err.constraint === "idx_lp_users_provider_user_id") {
+                    throw new BadRequestError("Account already linked to this provider.");
+                }
             }
             throw err;
         }

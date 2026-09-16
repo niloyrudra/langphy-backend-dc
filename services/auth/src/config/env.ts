@@ -51,6 +51,18 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): ValidatedEnv 
         // Logged as a warning, not an issue.
     }
 
+    // Social auth provider env vars — optional (feature-gated).
+    // If not set, the /social-auth endpoint will return 404 for that provider.
+    if (!env.GOOGLE_WEB_CLIENT_ID) {
+        console.warn("[env] GOOGLE_WEB_CLIENT_ID not set — Google sign-in will be unavailable");
+    }
+    if (!env.FACEBOOK_APP_ID) {
+        console.warn("[env] FACEBOOK_APP_ID not set — Facebook sign-in will be unavailable");
+    }
+    if (!env.FACEBOOK_APP_SECRET) {
+        console.warn("[env] FACEBOOK_APP_SECRET not set — Facebook sign-in will be unavailable");
+    }
+
     if (issues.length > 0) {
         throw new EnvValidationError(issues);
     }

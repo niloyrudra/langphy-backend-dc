@@ -8,6 +8,7 @@ import type { Server } from "http";
 import { signInRouter } from "./routes/signin.js";
 import { signOutRouter } from "./routes/signout.js";
 import { signUpRouter } from "./routes/signup.js";
+import { socialAuthRouter } from "./routes/social-auth.js";
 import { errorHandler } from "./middlewares/error-handler.js";
 import { dbRouter } from "./routes/db-route.js";
 import { resetPasswordByEmailRouter } from "./routes/reset-password.js";
@@ -75,6 +76,7 @@ app.use(dbRouter);
 app.use(signInRouter);
 app.use(signOutRouter);
 app.use(signUpRouter);
+app.use(socialAuthRouter);
 app.use(resetPasswordByEmailRouter);
 app.use(deleteAccountRouter);
 

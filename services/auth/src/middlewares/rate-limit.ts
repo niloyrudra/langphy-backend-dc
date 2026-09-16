@@ -1,6 +1,6 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { type ValueDeterminingMiddleware } from "express-rate-limit";
 import RedisStore from "rate-limit-redis";
-import type { Request } from "express";
+import type { Request, Response, RequestHandler } from "express";
 import { redis } from "../config/redis.js";
 
 /**
@@ -20,7 +20,7 @@ const makeLimiter = (
     max: number,
     keyPrefix: string,
     message: string
-) =>
+): RequestHandler =>
     rateLimit({
         windowMs,
         max,
@@ -31,13 +31,14 @@ const makeLimiter = (
                 redis.call(args[0], ...args.slice(1)) as Promise<any>,
             prefix: `rl:${keyPrefix}:`,
         }),
-        keyGenerator: (req: Request) => req.ip ?? "unknown",
+        keyGenerator: ((req: Request, _res: Response) => req.ip ?? "unknown") as unknown as ValueDeterminingMiddleware<string>,
+        // keyGenerator: (req: ValueDeterminingMiddleware<string> | undefined) => req?.ip ?? "unknown",
         handler: (_req, res) => {
             res.status(429).json({
                 errors: [{ message }],
             });
         },
-    });
+    }) as unknown as RequestHandler;
 
 // 10 signin attempts per 15 min per IP. Generous enough that mistyped
 // passwords don't lock a user out, tight enough to slow credential stuffing.
@@ -71,4 +72,12 @@ export const resetPwLimiter = makeLimiter(
     5,
     "reset-pw",
     "Too many password reset attempts. Please try again later."
+);
+
+// 10 social auth attempts per minute per IP. Mirrors OTP limiter.
+export const socialAuthLimiter = makeLimiter(
+    60 * 1000,
+    10,
+    "social-auth",
+    "Too many attempts. Please try again in a minute."
 );
