@@ -267,6 +267,14 @@ services:
   nlp:
     image: niloyrudra/nlp-service
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
     networks:
       - langphy
 
@@ -289,6 +297,14 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+        reservations:
+          cpus: '2'
+          memory: 2G
     networks:
       - langphy
 
@@ -311,6 +327,14 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+        reservations:
+          cpus: '2'
+          memory: 2G
     networks:
       - langphy
 

@@ -26,8 +26,17 @@
 # Stage 2 (runtime): copy venv + app code + baked weights into a clean image.
 # ═══════════════════════════════════════════════════════════════════════════
 
+# ── Build arguments for customization ──────────────────────────────────────────
+ARG PYTHON_VERSION=3.11
+ARG MODEL_SIZE=small
+ARG WHISPER_DEVICE=cpu
+ARG WHISPER_COMPUTE_TYPE=int8
+ARG WHISPER_NUM_WORKERS=2
+ARG UID=1000
+ARG GID=1000
+
 # ── Stage 1: dependency installer ─────────────────────────────────────────────
-FROM python:3.11-slim AS builder
+FROM python:${PYTHON_VERSION}-slim AS builder
 
 # System deps needed to compile some pip packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -50,9 +59,6 @@ RUN pip install --upgrade pip && \
 # This layer is cached separately from the app code.  Changing app/*.py does
 # NOT re-trigger this download – only a requirements.txt or ARG MODEL_SIZE
 # change will invalidate this cache layer.
-ARG MODEL_SIZE=small
-ARG WHISPER_DEVICE=cpu
-ARG WHISPER_COMPUTE_TYPE=int8
 
 ENV HF_HOME=/root/.cache/huggingface
 
@@ -67,16 +73,19 @@ print('Model downloaded and cached at', os.environ['HF_HOME']); \
 "
 
 # ── Stage 2: lean runtime image ───────────────────────────────────────────────
-FROM python:3.11-slim AS runtime
+FROM python:${PYTHON_VERSION}-slim AS runtime
 
 # Only the runtime system libs we actually need.
-# procps is required for `pgrep`, used by the Kubernetes readiness/liveness
-# probes in speech-worker-depl.yaml.  python:3.11-slim does not include it.
+# procps is required for `pgrep`, used by Kubernetes readiness/liveness probes.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libsndfile1 \
     procps \
  && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for security
+RUN groupadd -g ${GID} appuser && \
+    useradd -u ${UID} -g ${GID} -m -s /bin/bash appuser
 
 WORKDIR /app
 
@@ -86,58 +95,33 @@ COPY --from=builder /opt/venv /opt/venv
 # Copy baked model weights from builder
 COPY --from=builder /root/.cache/huggingface /root/.cache/huggingface
 
+# Change ownership to non-root user
+RUN chown -R ${UID}:${GID} /opt/venv /root/.cache/huggingface /app
+
 ENV PATH="/opt/venv/bin:$PATH"
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
 # Model config – matches what was baked in.  Override at runtime if needed.
-ARG MODEL_SIZE=small
 ENV WHISPER_MODEL_SIZE=${MODEL_SIZE}
-ENV WHISPER_DEVICE=cpu
-ENV WHISPER_COMPUTE_TYPE=int8
-ENV WHISPER_NUM_WORKERS=2
+ENV WHISPER_DEVICE=${WHISPER_DEVICE}
+ENV WHISPER_COMPUTE_TYPE=${WHISPER_COMPUTE_TYPE}
+ENV WHISPER_NUM_WORKERS=${WHISPER_NUM_WORKERS}
 ENV HF_HOME=/root/.cache/huggingface
 
 # Copy application code (changes here do NOT invalidate the model cache layer)
-COPY app/ ./app/
+COPY --chown=${UID}:${GID} app/ ./app/
+
+# Switch to non-root user
+USER ${UID}
 
 EXPOSE 8001
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "import httpx; httpx.get('http://localhost:8001/health/ready', timeout=5).raise_for_status()" || exit 1
+
 # Default: run the API server.
-# The speech-worker-depl.yaml overrides this CMD with:
-#   command: ["rq"]
-#   args: ["worker", "speech", "--worker-class", "app.worker.WarmWorker"]
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
-
-# Base image
-# FROM python:3.11-slim
-
-# # Install system dependencies
-# RUN apt-get update && apt-get install -y \
-#     ffmpeg \
-#     libsndfile1 \
-#  && rm -rf /var/lib/apt/lists/*
-
-# # Set working directory
-# WORKDIR /app
-
-# # Ensure app directory is on Python path
-# ENV PYTHONPATH=/app
-# ENV PYTHONUNBUFFERED=1
-
-# # Copy requirements first for caching
-# COPY requirements.txt .
-
-# # Upgrade pip and install Python dependencies
-# RUN pip install --upgrade pip
-# RUN pip install --no-cache-dir -r requirements.txt
-
-# # Copy the rest of your app
-# COPY . .
-
-# # Expose your app port
-# EXPOSE 8001
-
-# # Run Uvicorn
-# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
-# # CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", "--timeout-keep-alive", "300"]
+# The speech-worker overrides this CMD with:
+#   command: ["python", "app/worker.py"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1", "--loop", "uvloop", "--http", "httptools"]

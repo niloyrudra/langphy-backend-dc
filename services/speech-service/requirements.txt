@@ -2,23 +2,30 @@
 fastapi
 uvicorn[standard]
 
-# openai-whisper==20231117
+# ── Authentication ─────────────────────────────────────────────────────────────
+PyJWT==2.8.0
 
 # ── Whisper / transcription ────────────────────────────────────────────────────
 faster-whisper          # CTranslate2-backed Whisper – fast CPU inference
 ctranslate2             # explicit pin ensures the correct CTranslate2 backend
 
-# pydub
 # ── Audio I/O ─────────────────────────────────────────────────────────────────
 ffmpeg-python           # Python bindings for ffmpeg (format conversion)
 python-multipart        # required by FastAPI for File/Form uploads
 soundfile               # fast audio decoding (WAV, FLAC, OGG)
 resampy                 # high-quality audio resampling to 16 kHz
 numpy                   # array ops on raw audio
+# python-magic          # optional: file type detection via magic bytes (requires libmagic)
 
 # ── Async job queue ────────────────────────────────────────────────────────────
-redis                   # Redis client
+redis                   # Redis client (includes redis.asyncio)
 rq                      # Redis Queue – job dispatching and worker management
 
 # ── HTTP client (for NLP service calls from tasks) ────────────────────────────
 httpx
+
+# ── Rate limiting / utilities ──────────────────────────────────────────────────
+# (uses redis.asyncio from redis package)
+
+# ── Observability ───────────────────────────────────────────────────────────────
+python-json-logger      # structured JSON logging

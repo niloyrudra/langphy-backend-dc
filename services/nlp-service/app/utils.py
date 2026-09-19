@@ -1,15 +1,12 @@
-def default_article(gender, number):
-    if number == "Plur":
-        return "die"
-    if gender == "Masc":
-        return "der"
-    if gender == "Fem":
-        return "die"
-    if gender == "Neut":
-        return "das"
-    return None
+"""
+NLP Service Utility Functions
 
-def pronunciation_difficulty(word: str):
+Helper functions for pronunciation, scoring, and feedback generation.
+"""
+
+
+def pronunciation_difficulty(word: str) -> dict:
+    """Calculate pronunciation difficulty score and flags for a word."""
     score = 0
     flags = []
 
@@ -30,7 +27,9 @@ def pronunciation_difficulty(word: str):
         "flags": flags
     }
 
+
 def pronunciation_score(similarity: float) -> int:
+    """Convert similarity score to pronunciation score (0-100)."""
     if similarity >= 0.9:
         return 95
     if similarity >= 0.8:
@@ -41,7 +40,9 @@ def pronunciation_score(similarity: float) -> int:
         return 65
     return 50
 
+
 def generate_speaking_feedback(similarity: float, issues: list[str]) -> str:
+    """Generate human-readable feedback based on similarity and issues."""
     if similarity >= 0.9 and not issues:
         return (
             "Excellent work! Your pronunciation is clear, natural, "
