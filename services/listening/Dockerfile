@@ -1,25 +1,55 @@
-FROM node:20-alpine
+# ═══════════════════════════════════════════════════════════════════════
+# listening service
+# Build context: REPO ROOT
+#   docker build -f services/listening/Dockerfile -t niloyrudra/listening .
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── Stage 1: Build ────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# 1️⃣ Root workspace context (CRITICAL)
-COPY package.json package-lock.json ./
+# Copy pre-built shared package (built at repo root)
+COPY shared/dist ./shared/dist
+COPY shared/package.json ./shared/package.json
 
-# 2️⃣ Copy shared workspace
-COPY shared ./shared
-
-# 3️⃣ Install shared deps + build shared
+# Install shared dependencies (needed for shared node_modules)
 WORKDIR /app/shared
 RUN npm install
-RUN npm run build
 
-# 4️⃣ Copy service
 WORKDIR /app
-COPY services/listening ./services/listening
 
-# 5️⃣ Install service deps + build
+# ── Stage 2: Runtime ──────────────────────────────────────────────────
+# Copy and build the service
 WORKDIR /app/services/listening
+COPY services/listening/package*.json ./
 RUN npm install
+
+COPY services/listening/tsconfig*.json ./
+COPY services/listening/src/ ./src/
+
+# Compile TypeScript → dist/
 RUN npm run build
+
+# ── Runtime ───────────────────────────────────────────────────────────
+FROM node:20-alpine AS runtime
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Copy compiled JS
+COPY --from=builder /app/services/listening/dist ./dist
+
+# Copy node_modules
+COPY --from=builder /app/services/listening/node_modules ./node_modules
+
+# Copy package.json
+COPY --from=builder /app/services/listening/package.json ./
+
+# Copy pre-built shared package to /shared (resolved by file:../../shared from /app/dist)
+COPY --from=builder /app/shared/dist /shared/dist
+COPY --from=builder /app/shared/package.json /shared/package.json
+COPY --from=builder /app/shared/node_modules /shared/node_modules
 
 CMD ["node", "dist/index.js"]

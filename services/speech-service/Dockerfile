@@ -75,6 +75,14 @@ print('Model downloaded and cached at', os.environ['HF_HOME']); \
 # ── Stage 2: lean runtime image ───────────────────────────────────────────────
 FROM python:${PYTHON_VERSION}-slim AS runtime
 
+# Re-declare build args for this stage (ARGs don't persist across stages)
+ARG UID=1000
+ARG GID=1000
+ARG MODEL_SIZE=small
+ARG WHISPER_DEVICE=cpu
+ARG WHISPER_COMPUTE_TYPE=int8
+ARG WHISPER_NUM_WORKERS=2
+
 # Only the runtime system libs we actually need.
 # procps is required for `pgrep`, used by Kubernetes readiness/liveness probes.
 RUN apt-get update && apt-get install -y --no-install-recommends \

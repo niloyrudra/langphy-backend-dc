@@ -2,6 +2,12 @@
 # This repo must NEVER contain real secrets.
 # Always use *.example.yaml and .env.example
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
 # Node
 node_modules/
 npm-debug.log*

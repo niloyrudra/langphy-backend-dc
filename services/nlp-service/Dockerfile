@@ -33,6 +33,10 @@ RUN pip install --upgrade pip && \
 # ── Stage 2: lean runtime image ───────────────────────────────────────────────
 FROM python:${PYTHON_VERSION}-slim AS runtime
 
+# Re-declare build args for this stage (ARGs don't persist across stages)
+ARG UID=1000
+ARG GID=1000
+
 # Only runtime system libs needed
 RUN apt-get update && apt-get install -y --no-install-recommends \
     procps \
