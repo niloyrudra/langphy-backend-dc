@@ -1,0 +1,472 @@
+# Langphy Backend — Local Development with Neon PostgreSQL
+# Uses external Neon databases instead of local postgres container
+# Run: docker compose -f docker-compose.neon.yml --env-file .env.local up -d
+
+x-pg: &pg
+  # No local PG_HOST/PG_PORT - services use individual *_POSTGRES_DATABASE_URL
+  PG_PASSWORD: ${PG_PASSWORD}
+
+x-kafka: &kafka
+  KAFKA_BROKER: ${KAFKA_BROKER:-}
+  KAFKA_SASL_USERNAME: ${KAFKA_SASL_USERNAME:-}
+  KAFKA_SASL_PASSWORD: ${KAFKA_SASL_PASSWORD:-}
+  KAFKAJS_NO_PARTITIONER_WARNING: "1"
+
+x-jwt: &jwt
+  JWT_KEY: ${JWT_KEY}
+
+x-mongo: &mongo
+  MONGO_URI: ${MONGO_URI}
+
+services:
+
+  # ── Infrastructure (no postgres) ────────────────────────────────────────────
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: Langphy-DE
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - langphy
+    ports:
+      - "27017:27017"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - langphy
+    ports:
+      - "6379:6379"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    restart: unless-stopped
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    depends_on:
+      - zookeeper
+    networks:
+      - langphy
+    ports:
+      - "9092:9092"
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - langphy
+
+  # ── PostgreSQL Services (connect to Neon) ──────────────────────────────────
+
+  auth:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      <<: [*kafka, *jwt]
+      SERVICE_NAME: auth-service
+      PG_DB: langphy_auth
+      POSTGRES_DATABASE_URL: ${AUTH_POSTGRES_DATABASE_URL}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      REDIS_URL: ${REDIS_URL}
+      PORT: ${AUTH_PORT}
+      GOOGLE_WEB_CLIENT_ID: ${GOOGLE_WEB_CLIENT_ID}
+      GOOGLE_ANDROID_CLIENT_ID: ${GOOGLE_ANDROID_CLIENT_ID}
+      GOOGLE_IOS_CLIENT_ID: ${GOOGLE_IOS_CLIENT_ID}
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
+    networks:
+      - langphy
+
+  streaks:
+    build:
+      context: .
+      dockerfile: services/streaks/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: [*kafka, *jwt]
+      SERVICE_NAME: streaks-service
+      PG_DB: langphy_streaks
+      POSTGRES_DATABASE_URL: ${STREAKS_POSTGRES_DATABASE_URL}
+      PORT: ${STREAKS_PORT}
+    networks:
+      - langphy
+
+  progress:
+    build:
+      context: .
+      dockerfile: services/progress/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: [*kafka, *jwt]
+      SERVICE_NAME: progress-service
+      PG_DB: langphy_progress
+      POSTGRES_DATABASE_URL: ${PROGRESS_POSTGRES_DATABASE_URL}
+      PORT: ${PROGRESS_PORT}
+    networks:
+      - langphy
+
+  performance:
+    build:
+      context: .
+      dockerfile: services/performance/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: [*kafka, *jwt]
+      SERVICE_NAME: performance-service
+      PG_DB: langphy_performance
+      POSTGRES_DATABASE_URL: ${PERFORMANCE_POSTGRES_DATABASE_URL}
+      PORT: ${PERFORMANCE_PORT}
+    networks:
+      - langphy
+
+  profile:
+    build:
+      context: .
+      dockerfile: services/profile/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: [*kafka, *jwt]
+      SERVICE_NAME: profile-service
+      PG_DB: langphy_profile
+      POSTGRES_DATABASE_URL: ${PROFILE_POSTGRES_DATABASE_URL}
+      PORT: ${PROFILE_PORT}
+    networks:
+      - langphy
+
+  settings:
+    build:
+      context: .
+      dockerfile: services/settings/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: [*kafka, *jwt]
+      SERVICE_NAME: settings-service
+      PG_DB: langphy_settings
+      POSTGRES_DATABASE_URL: ${SETTINGS_POSTGRES_DATABASE_URL}
+      PORT: ${SETTINGS_PORT}
+    networks:
+      - langphy
+
+  notification:
+    build:
+      context: .
+      dockerfile: services/notification/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: [*kafka, *jwt]
+      SERVICE_NAME: notification-service
+      PG_DB: langphy_notification
+      POSTGRES_DATABASE_URL: ${NOTIFICATION_POSTGRES_DATABASE_URL}
+      PORT: ${NOTIFICATION_PORT}
+    networks:
+      - langphy
+
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: [*kafka, *jwt]
+      SERVICE_NAME: gateway-service
+      NODE_ENV: development
+      PG_DB: langphy_gateway
+      POSTGRES_DATABASE_URL: ${GATEWAY_POSTGRES_DATABASE_URL}
+      PORT: ${GATEWAY_PORT}
+    networks:
+      - langphy
+
+  # ── MongoDB Services ───────────────────────────────────────────────────────
+
+  category:
+    build:
+      context: .
+      dockerfile: services/category/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: [*mongo]
+      CATEGORY_MONGO_URI: ${MONGO_URI}
+      CATEGORY_COLLECTION: ${CATEGORY_COLLECTION}
+      CATEGORY_CONTENT_VERSION: ${CATEGORY_CONTENT_VERSION}
+      PORT: ${CATEGORY_PORT}
+    networks:
+      - langphy
+
+  unit:
+    build:
+      context: .
+      dockerfile: services/unit/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: [*mongo]
+      UNIT_MONGO_URI: ${MONGO_URI}
+      UNIT_COLLECTION: ${UNIT_COLLECTION}
+      UNIT_CONTENT_VERSION: ${UNIT_CONTENT_VERSION}
+      PORT: ${UNIT_PORT}
+    networks:
+      - langphy
+
+  practice:
+    build:
+      context: .
+      dockerfile: services/practice/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: [*mongo]
+      PRACTICE_MONGO_URI: ${MONGO_URI}
+      PRACTICE_COLLECTION: ${PRACTICE_COLLECTION}
+      PRACTICE_CONTENT_VERSION: ${PRACTICE_CONTENT_VERSION}
+      PORT: ${PRACTICE_PORT}
+    networks:
+      - langphy
+
+  quiz:
+    build:
+      context: .
+      dockerfile: services/quiz/Dockerfile
+    restart: unless-stoppped
+    environment:
+      <<: [*mongo]
+      QUIZ_MONGO_URI: ${MONGO_URI}
+      QUIZ_COLLECTION: ${QUIZ_COLLECTION}
+      QUIZ_CONTENT_VERSION: ${QUIZ_CONTENT_VERSION}
+      PORT: ${QUIZ_PORT}
+    networks:
+      - langphy
+
+  speaking:
+    build:
+      context: .
+      dockerfile: services/speaking/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: [*mongo]
+      SPEAKING_MONGO_URI: ${MONGO_URI}
+      SPEAKING_COLLECTION: ${SPEAKING_COLLECTION}
+      SPEAKING_CONTENT_VERSION: ${SPEAKING_CONTENT_VERSION}
+      PORT: ${SPEAKING_PORT}
+    networks:
+      - langphy
+
+  reading:
+    build:
+      context: .
+      dockerfile: services/reading/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: [*mongo]
+      READING_MONGO_URI: ${MONGO_URI}
+      READING_COLLECTION: ${READING_COLLECTION}
+      READING_CONTENT_VERSION: ${READING_CONTENT_VERSION}
+      PORT: ${READING_PORT}
+    networks:
+      - langphy
+
+  writing:
+    build:
+      context: .
+      dockerfile: services/writing/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: [*mongo]
+      WRITING_MONGO_URI: ${MONGO_URI}
+      WRITING_COLLECTION: ${WRITING_COLLECTION}
+      WRITING_CONTENT_VERSION: ${WRITING_CONTENT_VERSION}
+      PORT: ${WRITING_PORT}
+    networks:
+      - langphy
+
+  listening:
+    build:
+      context: .
+      dockerfile: services/listening/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: [*mongo]
+      LISTENING_MONGO_URI: ${MONGO_URI}
+      LISTENING_COLLECTION: ${LISTENING_COLLECTION}
+      LISTENING_CONTENT_VERSION: ${LISTENING_CONTENT_VERSION}
+      PORT: ${LISTENING_PORT}
+    networks:
+      - langphy
+
+  # ── Python / AI Services ──────────────────────────────────────────────────
+
+  nlp:
+    build:
+      context: ./services/nlp-service
+      dockerfile: Dockerfile
+      args:
+        UID: "1000"
+        GID: "1000"
+    restart: unless-stopped
+    environment:
+      PORT: ${NLP_PORT}
+      JWT_KEY: ${JWT_KEY}
+    networks:
+      - langphy
+    ports:
+      - "8000:8000"
+
+  # speech-api and speech-worker commented out (require local model download)
+  # Uncomment and add HF_TOKEN to .env.local to enable
+
+  # speech-api:
+  #   build:
+  #     context: ./services/speech-service
+  #     dockerfile: Dockerfile
+  #     args:
+  #       UID: "1000"
+  #       GID: "1000"
+  #       MODEL_SIZE: ${WHISPER_MODEL_SIZE}
+  #       WHISPER_DEVICE: ${WHISPER_DEVICE}
+  #       WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE}
+  #       WHISPER_NUM_WORKERS: ${WHISPER_NUM_WORKERS}
+  #   restart: unless-stopped
+  #   command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+  #   environment:
+  #     REDIS_HOST: redis
+  #     REDIS_PORT: "6379"
+  #     NLP_SERVICE_URL: http://nlp:8000
+  #     WHISPER_MODEL_SIZE: ${WHISPER_MODEL_SIZE}
+  #     WHISPER_DEVICE: ${WHISPER_DEVICE}
+  #     WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE}
+  #     WHISPER_NUM_WORKERS: ${WHISPER_NUM_WORKERS}
+  #     HF_HOME: /root/.cache/huggingface
+  #   volumes:
+  #     - audio_tmp:/tmp
+  #     - whisper_cache:/root/.cache/huggingface
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #     nlp:
+  #       condition: service_started
+  #   networks:
+  #     - langphy
+  #   ports:
+  #     - "8001:8001"
+
+  # speech-worker:
+  #   build:
+  #     context: ./services/speech-service
+  #     dockerfile: Dockerfile
+  #     args:
+  #       UID: "1000"
+  #       GID: "1000"
+  #       MODEL_SIZE: ${WHISPER_MODEL_SIZE}
+  #       WHISPER_DEVICE: ${WHISPER_DEVICE}
+  #       WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE}
+  #       WHISPER_NUM_WORKERS: ${WHISPER_NUM_WORKERS}
+  #   restart: unless-stopped
+  #   command: ["python", "app/worker.py"]
+  #   environment:
+  #     REDIS_HOST: redis
+  #     REDIS_PORT: "6379"
+  #     NLP_SERVICE_URL: http://nlp:8000
+  #     WHISPER_MODEL_SIZE: ${WHISPER_MODEL_SIZE}
+  #     WHISPER_DEVICE: ${WHISPER_DEVICE}
+  #     WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE}
+  #     WHISPER_NUM_WORKERS: ${WHISPER_NUM_WORKERS}
+  #     HF_HOME: /root/.cache/huggingface
+  #   volumes:
+  #     - audio_tmp:/tmp
+  #     - whisper_cache:/root/.cache/huggingface
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #     nlp:
+  #       condition: service_started
+  #   networks:
+  #     - langphy
+
+  # ── Reverse Proxy (Caddy) ─────────────────────────────────────────────────
+
+  caddy:
+    build:
+      context: ./infra/caddy
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      PORT: ${PORT}
+      AUTH_HOST: ${AUTH_HOST}
+      AUTH_PORT: ${AUTH_PORT}
+      STREAKS_HOST: ${STREAKS_HOST}
+      STREAKS_PORT: ${STREAKS_PORT}
+      PROGRESS_HOST: ${PROGRESS_HOST}
+      PROGRESS_PORT: ${PROGRESS_PORT}
+      PERFORMANCE_HOST: ${PERFORMANCE_HOST}
+      PERFORMANCE_PORT: ${PERFORMANCE_PORT}
+      PROFILE_HOST: ${PROFILE_HOST}
+      PROFILE_PORT: ${PROFILE_PORT}
+      SETTINGS_HOST: ${SETTINGS_HOST}
+      SETTINGS_PORT: ${SETTINGS_PORT}
+      NOTIFICATION_HOST: ${NOTIFICATION_HOST}
+      NOTIFICATION_PORT: ${NOTIFICATION_PORT}
+      GATEWAY_HOST: ${GATEWAY_HOST}
+      GATEWAY_PORT: ${GATEWAY_PORT}
+      CATEGORY_HOST: ${CATEGORY_HOST}
+      CATEGORY_PORT: ${CATEGORY_PORT}
+      UNIT_HOST: ${UNIT_HOST}
+      UNIT_PORT: ${UNIT_PORT}
+      PRACTICE_HOST: ${PRACTICE_HOST}
+      PRACTICE_PORT: ${PRACTICE_PORT}
+      QUIZ_HOST: ${QUIZ_HOST}
+      QUIZ_PORT: ${QUIZ_PORT}
+      SPEAKING_HOST: ${SPEAKING_HOST}
+      SPEAKING_PORT: ${SPEAKING_PORT}
+      READING_HOST: ${READING_HOST}
+      READING_PORT: ${READING_PORT}
+      WRITING_HOST: ${WRITING_HOST}
+      WRITING_PORT: ${WRITING_PORT}
+      LISTENING_HOST: ${LISTENING_HOST}
+      LISTENING_PORT: ${LISTENING_PORT}
+      NLP_HOST: ${NLP_HOST}
+      NLP_PORT: ${NLP_PORT}
+      SPEECH_API_HOST: ${SPEECH_API_HOST}
+      SPEECH_API_PORT: ${SPEECH_API_PORT}
+    networks:
+      - langphy
+
+volumes:
+  mongo_data:
+  redis_data:
+  audio_tmp:
+  whisper_cache:
+  caddy_data:
+  caddy_config:
+
+networks:
+  langphy:
+    driver: bridge
