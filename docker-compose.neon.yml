@@ -87,6 +87,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    command: sh -c "node dist/db/migrate.js && node dist/index.js"
     environment:
       <<: [*kafka, *jwt]
       SERVICE_NAME: auth-service
@@ -108,6 +109,7 @@ services:
       context: .
       dockerfile: services/streaks/Dockerfile
     restart: unless-stopped
+    command: sh -c "node dist/db/migrate.js && node dist/index.js"
     environment:
       <<: [*kafka, *jwt]
       SERVICE_NAME: streaks-service
@@ -122,6 +124,7 @@ services:
       context: .
       dockerfile: services/progress/Dockerfile
     restart: unless-stopped
+    command: sh -c "node dist/db/migrate.js && node dist/index.js"
     environment:
       <<: [*kafka, *jwt]
       SERVICE_NAME: progress-service
@@ -136,6 +139,7 @@ services:
       context: .
       dockerfile: services/performance/Dockerfile
     restart: unless-stopped
+    command: sh -c "node dist/db/migrate.js && node dist/index.js"
     environment:
       <<: [*kafka, *jwt]
       SERVICE_NAME: performance-service
@@ -150,6 +154,7 @@ services:
       context: .
       dockerfile: services/profile/Dockerfile
     restart: unless-stopped
+    command: sh -c "node dist/db/migrate.js && node dist/index.js"
     environment:
       <<: [*kafka, *jwt]
       SERVICE_NAME: profile-service
@@ -164,6 +169,7 @@ services:
       context: .
       dockerfile: services/settings/Dockerfile
     restart: unless-stopped
+    command: sh -c "node dist/db/migrate.js && node dist/index.js"
     environment:
       <<: [*kafka, *jwt]
       SERVICE_NAME: settings-service
@@ -178,6 +184,7 @@ services:
       context: .
       dockerfile: services/notification/Dockerfile
     restart: unless-stopped
+    command: sh -c "node dist/db/migrate.js && node dist/index.js"
     environment:
       <<: [*kafka, *jwt]
       SERVICE_NAME: notification-service
@@ -192,6 +199,7 @@ services:
       context: .
       dockerfile: services/gateway-service/Dockerfile
     restart: unless-stopped
+    command: sh -c "node dist/db/migrate.js && node dist/index.js"
     environment:
       <<: [*kafka, *jwt]
       SERVICE_NAME: gateway-service
@@ -250,7 +258,7 @@ services:
     build:
       context: .
       dockerfile: services/quiz/Dockerfile
-    restart: unless-stoppped
+    restart: unless-stopped
     environment:
       <<: [*mongo]
       QUIZ_MONGO_URI: ${MONGO_URI}

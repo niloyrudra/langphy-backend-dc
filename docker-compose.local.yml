@@ -112,6 +112,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    command: sh -c "node dist/db/migrate.js && node dist/index.js"
     environment:
       <<: [*pg, *kafka, *jwt]
       SERVICE_NAME: auth-service
@@ -136,6 +137,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    command: sh -c "node dist/db/migrate.js && node dist/index.js"
     environment:
       <<: [*pg, *kafka, *jwt]
       SERVICE_NAME: streaks-service
@@ -153,6 +155,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    command: sh -c "node dist/db/migrate.js && node dist/index.js"
     environment:
       <<: [*pg, *kafka, *jwt]
       SERVICE_NAME: progress-service
@@ -170,6 +173,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    command: sh -c "node dist/db/migrate.js && node dist/index.js"
     environment:
       <<: [*pg, *kafka, *jwt]
       SERVICE_NAME: performance-service
@@ -187,6 +191,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    command: sh -c "node dist/db/migrate.js && node dist/index.js"
     environment:
       <<: [*pg, *kafka, *jwt]
       SERVICE_NAME: profile-service
@@ -204,6 +209,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    command: sh -c "node dist/db/migrate.js && node dist/index.js"
     environment:
       <<: [*pg, *kafka, *jwt]
       SERVICE_NAME: settings-service
@@ -221,6 +227,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    command: sh -c "node dist/db/migrate.js && node dist/index.js"
     environment:
       <<: [*pg, *kafka, *jwt]
       SERVICE_NAME: notification-service
@@ -238,6 +245,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    command: sh -c "node dist/db/migrate.js && node dist/index.js"
     environment:
       <<: [*pg, *kafka, *jwt]
       SERVICE_NAME: gateway-service
