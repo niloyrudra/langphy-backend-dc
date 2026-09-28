@@ -155,7 +155,7 @@ services:
       POSTGRES_DATABASE_URL: ${PROGRESS_POSTGRES_DATABASE_URL:-}
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3002/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3002/api/progress/db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -178,7 +178,7 @@ services:
       POSTGRES_DATABASE_URL: ${PERFORMANCE_POSTGRES_DATABASE_URL:-}
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3003/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3003/api/performance/db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -201,7 +201,7 @@ services:
       POSTGRES_DATABASE_URL: ${PROFILE_POSTGRES_DATABASE_URL:-}
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3004/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3004/api/profile/db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -224,7 +224,7 @@ services:
       POSTGRES_DATABASE_URL: ${SETTINGS_POSTGRES_DATABASE_URL:-}
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3005/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3005/api/settings/db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -247,7 +247,7 @@ services:
       POSTGRES_DATABASE_URL: ${NOTIFICATION_POSTGRES_DATABASE_URL:-}
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4011/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4011/api/notification/db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -271,7 +271,7 @@ services:
       POSTGRES_DATABASE_URL: ${GATEWAY_POSTGRES_DATABASE_URL:-}
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3009/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3009/api/gateway/db"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -5,6 +5,7 @@ import bodyParser from "body-parser";
 import type { Server } from "http";
 
 import { eventRouter } from "./routes/event.route.js";
+import { dbRouter } from "./routes/db-route.js";
 import { errorHandler } from "./middlewares/error-handler.js";
 
 import { initProducer, shutdownProducer } from "./kafka/producer.js";
@@ -62,6 +63,7 @@ app.use(bodyParser.json({ limit: "1mb" }));
 // 3. Routers
 // ─────────────────────────────────────────────────────────────────────────
 app.use(eventRouter);
+app.use(dbRouter);
 
 app.use(errorHandler);
 
