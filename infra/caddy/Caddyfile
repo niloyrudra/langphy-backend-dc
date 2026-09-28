@@ -68,35 +68,35 @@
         reverse_proxy {$NOTIFICATION_HOST}:{$NOTIFICATION_PORT}
     }
 
-    handle /api/category/* {
+    handle /api/category* {
         reverse_proxy {$CATEGORY_HOST}:{$CATEGORY_PORT}
     }
 
-    handle /api/unit/* {
+    handle /api/unit* {
         reverse_proxy {$UNIT_HOST}:{$UNIT_PORT}
     }
 
-    handle /api/practices/* {
+    handle /api/practices* {
         reverse_proxy {$PRACTICE_HOST}:{$PRACTICE_PORT}
     }
 
-    handle /api/quizzes/* {
+    handle /api/quizzes* {
         reverse_proxy {$QUIZ_HOST}:{$QUIZ_PORT}
     }
 
-    handle /api/speaking/* {
+    handle /api/speaking* {
         reverse_proxy {$SPEAKING_HOST}:{$SPEAKING_PORT}
     }
 
-    handle /api/reading/* {
+    handle /api/reading* {
         reverse_proxy {$READING_HOST}:{$READING_PORT}
     }
 
-    handle /api/writing/* {
+    handle /api/writing* {
         reverse_proxy {$WRITING_HOST}:{$WRITING_PORT}
     }
 
-    handle /api/listening/* {
+    handle /api/listening* {
         reverse_proxy {$LISTENING_HOST}:{$LISTENING_PORT}
     }
 

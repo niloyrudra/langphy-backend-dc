@@ -1,11 +1,9 @@
 import rateLimit, { type ValueDeterminingMiddleware } from "express-rate-limit";
-import RedisStore from "rate-limit-redis";
 import type { Request, Response, RequestHandler } from "express";
-import { redis } from "../config/redis.js";
 
 /**
- * Per-endpoint rate limiters. All backed by a shared Redis instance so
- * counts are consistent across replicas and survive restarts.
+ * Per-endpoint rate limiters. Using memory store for local development.
+ * Redis store has compatibility issues with rate-limit-redis + ioredis.
  *
  * Keys are prefixed with `rl:<name>:` so they don't collide with
  * other Redis users (queues, sessions, etc).
@@ -26,13 +24,8 @@ const makeLimiter = (
         max,
         standardHeaders: true,
         legacyHeaders: false,
-        store: new RedisStore({
-            sendCommand: (...args: string[]) =>
-                redis.call(args[0], ...args.slice(1)) as Promise<any>,
-            prefix: `rl:${keyPrefix}:`,
-        }),
+        // Use default memory store (no Redis)
         keyGenerator: ((req: Request, _res: Response) => req.ip ?? "unknown") as unknown as ValueDeterminingMiddleware<string>,
-        // keyGenerator: (req: ValueDeterminingMiddleware<string> | undefined) => req?.ip ?? "unknown",
         handler: (_req, res) => {
             res.status(429).json({
                 errors: [{ message }],

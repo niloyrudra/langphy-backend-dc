@@ -6,8 +6,7 @@ import { Redis } from "ioredis";
  * - Reads REDIS_URL (e.g. `redis://localhost:6379` or `rediss://...` for TLS).
  * - `lazyConnect: false` so connection errors surface during boot rather than
  *   at the first rate-limited request.
- * - `enableOfflineQueue: false` so requests fail fast if Redis goes down
- *   instead of piling up in the queue.
+ * - `enableOfflineQueue: true` so commands queue while connecting instead of failing.
  *
  * For multi-instance deployments this gives all replicas a shared rate-limit
  * counter. Single-instance Railway deploys still benefit because the counter
@@ -17,7 +16,7 @@ const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
 
 export const redis = new Redis(redisUrl, {
     maxRetriesPerRequest: 3,
-    enableOfflineQueue: false,
+    enableOfflineQueue: true,
     lazyConnect: false,
 });
 

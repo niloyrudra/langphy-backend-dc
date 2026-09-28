@@ -95,18 +95,21 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       <<: [*pg, *kafka, *jwt]
       SERVICE_NAME: auth-service
       PG_DB: langphy_auth
       POSTGRES_DATABASE_URL: ${AUTH_POSTGRES_DATABASE_URL:-}
       RESEND_API_KEY: ${RESEND_API_KEY}
-      CORS_ORIGIN: ${CORS_ORIGIN}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
       GOOGLE_WEB_CLIENT_ID: ${GOOGLE_WEB_CLIENT_ID}
       GOOGLE_ANDROID_CLIENT_ID: ${GOOGLE_ANDROID_CLIENT_ID}
       GOOGLE_IOS_CLIENT_ID: ${GOOGLE_IOS_CLIENT_ID}
       FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
       FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
+      REDIS_URL: redis://redis:6379
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/users/db"]
@@ -516,6 +519,42 @@ services:
     restart: unless-stopped
     environment:
       PORT: "80"
+      AUTH_HOST: auth
+      AUTH_PORT: "3000"
+      STREAKS_HOST: streaks
+      STREAKS_PORT: "3001"
+      PROGRESS_HOST: progress
+      PROGRESS_PORT: "3002"
+      PERFORMANCE_HOST: performance
+      PERFORMANCE_PORT: "3003"
+      PROFILE_HOST: profile
+      PROFILE_PORT: "3004"
+      SETTINGS_HOST: settings
+      SETTINGS_PORT: "3005"
+      NOTIFICATION_HOST: notification
+      NOTIFICATION_PORT: "4011"
+      GATEWAY_HOST: gateway
+      GATEWAY_PORT: "3009"
+      CATEGORY_HOST: category
+      CATEGORY_PORT: "4000"
+      UNIT_HOST: unit
+      UNIT_PORT: "4001"
+      PRACTICE_HOST: practice
+      PRACTICE_PORT: "4002"
+      QUIZ_HOST: quiz
+      QUIZ_PORT: "4003"
+      SPEAKING_HOST: speaking
+      SPEAKING_PORT: "4004"
+      READING_HOST: reading
+      READING_PORT: "4005"
+      WRITING_HOST: writing
+      WRITING_PORT: "4006"
+      LISTENING_HOST: listening
+      LISTENING_PORT: "4007"
+      NLP_HOST: nlp
+      NLP_PORT: "8000"
+      SPEECH_HOST: speech-api
+      SPEECH_PORT: "8001"
     ports:
       - "80:80"
       - "443:443"
