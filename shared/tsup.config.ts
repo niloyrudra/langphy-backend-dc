@@ -4,7 +4,7 @@ export default defineConfig({
   entry: ['index.ts', 'content.ts'],
   format: ['esm'],
   dts: true,
-  bundle: true,      // ✅ bundle runtime deps (zod)
-  external: ['express', 'express-async-errors', 'cors', 'mongoose'], // content.ts kit deps stay external
+  bundle: true,
+  external: ['express', 'cors', 'mongoose'],
   outDir: 'dist'
 })

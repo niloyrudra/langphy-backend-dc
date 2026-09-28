@@ -12,7 +12,7 @@ from app.constants import (
 )
 from app.utils import pronunciation_difficulty, pronunciation_score, generate_speaking_feedback
 
-nlp = spacy.load("de_core_news_lg")
+nlp = spacy.load("de_core_news_sm")
 
 
 def _dict_lookup(word: str) -> list[str]:

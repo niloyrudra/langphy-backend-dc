@@ -23,7 +23,6 @@ import express, {
     type Response,
     type Router,
 } from "express";
-import "express-async-errors"; // routes may be async; rejections → error handler
 import cors from "cors";
 import mongoose, { Schema, model, type InferSchemaType, type Model, type SchemaDefinition } from "mongoose";
 
@@ -321,7 +320,7 @@ export async function bootstrapContentService(opts: BootstrapContentServiceOptio
     app.use(express.json());
     if (enableCors) app.use(cors());
     app.use(router);
-    app.all("*", (_req, res) => {
+    app.use((_req, res) => {
         res.status(404).json(notFoundBody ?? { error: "Route not found!" });
     });
     app.use(createErrorHandler({ serviceLabel: serviceName }));

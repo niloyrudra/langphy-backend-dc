@@ -58,7 +58,7 @@ services:
 
   # ── Kafka (KRaft mode - no Zookeeper) ──────────────────────────────────────
   kafka:
-    image: apache/kafka:3.7
+    image: apache/kafka:3.7.2
     restart: unless-stopped
     environment:
       KAFKA_NODE_ID: 1
@@ -101,6 +101,12 @@ services:
       PG_DB: langphy_auth
       POSTGRES_DATABASE_URL: ${AUTH_POSTGRES_DATABASE_URL:-}
       RESEND_API_KEY: ${RESEND_API_KEY}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      GOOGLE_WEB_CLIENT_ID: ${GOOGLE_WEB_CLIENT_ID}
+      GOOGLE_ANDROID_CLIENT_ID: ${GOOGLE_ANDROID_CLIENT_ID}
+      GOOGLE_IOS_CLIENT_ID: ${GOOGLE_IOS_CLIENT_ID}
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
     command: sh -c "node dist/db/migrate.js && node dist/index.js"
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/users/db"]
@@ -283,7 +289,7 @@ services:
       CATEGORY_COLLECTION: ${CATEGORY_COLLECTION:-categories}
       CATEGORY_CONTENT_VERSION: ${CATEGORY_CONTENT_VERSION:-1}
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4000/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4000/api/category/version"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -299,7 +305,7 @@ services:
       UNIT_COLLECTION: ${UNIT_COLLECTION:-units}
       UNIT_CONTENT_VERSION: ${UNIT_CONTENT_VERSION:-1}
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4001/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4001/api/unit/version"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -315,7 +321,7 @@ services:
       PRACTICE_COLLECTION: ${PRACTICE_COLLECTION:-practices}
       PRACTICE_CONTENT_VERSION: ${PRACTICE_CONTENT_VERSION:-1}
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4002/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4002/api/practices/version"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -331,7 +337,7 @@ services:
       QUIZ_COLLECTION: ${QUIZ_COLLECTION:-quizzes}
       QUIZ_CONTENT_VERSION: ${QUIZ_CONTENT_VERSION:-1}
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4003/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4003/api/quizzes/version"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -347,7 +353,7 @@ services:
       SPEAKING_COLLECTION: ${SPEAKING_COLLECTION:-speakings}
       SPEAKING_CONTENT_VERSION: ${SPEAKING_CONTENT_VERSION:-1}
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4004/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4004/api/speaking/version"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -363,7 +369,7 @@ services:
       READING_COLLECTION: ${READING_COLLECTION:-readings}
       READING_CONTENT_VERSION: ${READING_CONTENT_VERSION:-1}
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4005/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4005/api/reading/version"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -379,7 +385,7 @@ services:
       WRITING_COLLECTION: ${WRITING_COLLECTION:-writings}
       WRITING_CONTENT_VERSION: ${WRITING_CONTENT_VERSION:-1}
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4006/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4006/api/writing/version"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -395,7 +401,7 @@ services:
       LISTENING_COLLECTION: ${LISTENING_COLLECTION:-listenings}
       LISTENING_CONTENT_VERSION: ${LISTENING_CONTENT_VERSION:-1}
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4007/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4007/api/listening/version"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -408,6 +414,8 @@ services:
   nlp:
     image: niloyrudra/nlp-service
     restart: unless-stopped
+    environment:
+      JWT_KEY: ${JWT_KEY}
     deploy:
       resources:
         limits:
@@ -417,7 +425,7 @@ services:
           cpus: '1'
           memory: 1G
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=5).read()"]
       interval: 10s
       timeout: 10s
       retries: 5
@@ -438,6 +446,7 @@ services:
       WHISPER_COMPUTE_TYPE: int8
       WHISPER_NUM_WORKERS: "1"
       HF_HOME: /root/.cache/huggingface
+      JWT_KEY: ${JWT_KEY}
     volumes:
       - audio_tmp:/tmp
       - whisper_cache:/root/.cache/huggingface
@@ -453,7 +462,7 @@ services:
           cpus: '2'
           memory: 2G
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8001/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health/ready', timeout=5).read()"]
       interval: 10s
       timeout: 10s
       retries: 5
@@ -505,6 +514,8 @@ services:
   caddy:
     image: niloyrudra/caddy
     restart: unless-stopped
+    environment:
+      PORT: "80"
     ports:
       - "80:80"
       - "443:443"
@@ -512,7 +523,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:2019/"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost/health"]
       interval: 10s
       timeout: 5s
       retries: 5

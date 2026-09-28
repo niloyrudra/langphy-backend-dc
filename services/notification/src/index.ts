@@ -9,7 +9,6 @@ process.on('unhandledRejection', (reason) => {
 });
 
 import Express from "express";
-import "express-async-errors";
 import helmet from "helmet";
 import { NotificationRouter } from "./routes/notification.route.js";
 import { errorHandler } from "./middlewares/error-handler.js";

@@ -1,4 +1,3 @@
-import "express-async-errors";
 import express, { type Express } from "express";
 import helmet from "helmet";
 import cors from "cors";
@@ -122,8 +121,8 @@ process.on("uncaughtException", (err) => {
 });
 process.on("unhandledRejection", (reason) => {
     // Don't exit on unhandled rejection — let the request finish and log it.
-    // (Exiting here loses in-flight work; the express-async-errors middleware
-    // already routes handler rejections to errorHandler.)
+    // (Exiting here loses in-flight work; Express 5 natively handles
+    // async handler rejections by forwarding them to errorHandler.)
     console.error("[FATAL] unhandledRejection:", reason);
 });
 

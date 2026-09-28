@@ -27,7 +27,6 @@
      "@langphy/shared": "file:../../shared",
      "cors": "^2.8.5",
      "express": "^5.2.1",
-     "express-async-errors": "^3.1.1",
      "express-validator": "^7.3.1",
      "firebase-admin": "^13.7.0",
      "helmet": "^8.3.0",

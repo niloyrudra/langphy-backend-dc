@@ -13,12 +13,10 @@ echo "🔨 Building from: $REPO_ROOT"
 
 # ── PostgreSQL services ────────────────────────────────────────────────────
 PG_SERVICES=(auth streaks progress performance profile settings notification gateway-service)
-# PG_SERVICES=(auth streaks progress performance profile settings achievements notification gateway)
 
 for svc in "${PG_SERVICES[@]}"; do
     echo ""
     echo "▶ Building $svc..."
-    cp Dockerfile.$svc services/$svc/Dockerfile
     docker build \
         --build-context shared=./shared \
         -t $REGISTRY/$svc:latest \
@@ -34,7 +32,6 @@ MONGO_SERVICES=(category unit practice quiz speaking reading writing listening)
 for svc in "${MONGO_SERVICES[@]}"; do
     echo ""
     echo "▶ Building $svc..."
-    cp Dockerfile.$svc services/$svc/Dockerfile
     docker build \
         -t $REGISTRY/$svc:latest \
         -f services/$svc/Dockerfile \
@@ -59,6 +56,15 @@ docker build \
     -f services/speech-service/Dockerfile \
     ./services/speech-service
 docker push $REGISTRY/speech-service:latest
+
+# ── Infrastructure services ────────────────────────────────────────────────
+echo ""
+echo "▶ Building caddy..."
+docker build \
+    -t $REGISTRY/caddy:latest \
+    -f infra/caddy/Dockerfile \
+    ./infra/caddy
+docker push $REGISTRY/caddy:latest
 
 echo ""
 echo "✅ All images built and pushed successfully!"

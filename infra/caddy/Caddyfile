@@ -25,6 +25,10 @@
         format json
     }
 
+    handle /health {
+        respond "OK" 200
+    }
+
     handle /api/users/* {
         reverse_proxy {$AUTH_HOST}:{$AUTH_PORT}
     }
