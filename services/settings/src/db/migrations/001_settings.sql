@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS lp_settings (
     quiz_service BOOLEAN DEFAULT true,
     notifications BOOLEAN DEFAULT true,
     language TEXT DEFAULT 'en',
+    timezone TEXT DEFAULT 'UTC',
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
@@ -35,3 +36,22 @@ CREATE TRIGGER trg_lp_settings_updated_at
 BEFORE UPDATE ON lp_settings
 FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
+
+-- Add timezone column if it doesn't exist (for existing deployments)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name = 'lp_settings' AND column_name = 'timezone'
+    ) THEN
+        ALTER TABLE lp_settings 
+        ADD COLUMN timezone TEXT DEFAULT 'UTC';
+    END IF;
+END
+$$;
+
+-- Update existing rows to have default timezone if NULL
+UPDATE lp_settings 
+SET timezone = 'UTC' 
+WHERE timezone IS NULL;
