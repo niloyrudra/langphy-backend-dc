@@ -69,13 +69,20 @@ export const runMigrations = async () => {
 
 // ── Run when executed directly ─────────────────────────────────────────
 // This block runs when called via: node dist/db/migrate.js
-// It does NOT run when imported by index.ts
-runMigrations()
-  .then(() => {
-    console.log("✅ Migrations complete");
-    process.exit(0);
-  })
-  .catch((err) => {
-    console.error("❌ Migration failed:", err);
-    process.exit(1);
-  });
+// It does NOT run when imported by index.ts — or by the test suite, which
+// calls runMigrations() programmatically.
+const invokedAsScript =
+    typeof process.argv[1] === "string" &&
+    process.argv[1].replace(/\\/g, "/").endsWith("db/migrate.js");
+
+if (invokedAsScript) {
+    runMigrations()
+        .then(() => {
+            console.log("✅ Migrations complete");
+            process.exit(0);
+        })
+        .catch((err) => {
+            console.error("❌ Migration failed:", err);
+            process.exit(1);
+        });
+}

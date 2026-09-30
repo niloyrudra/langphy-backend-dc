@@ -45,7 +45,14 @@ export const signinController = async (req: Request, res: Response) => {
 
     res.status(200).send({
         message: "Signin successful!",
-        user: { ...user },
+        // Minimal public shape — matches verify-otp / social-auth responses.
+        // The full row (which includes the bcrypt `password` column) used to
+        // be spread here, leaking the password hash to every client (C1).
+        user: {
+            id: user.id,
+            email: user.email,
+            created_at: user.created_at,
+        },
         token: userJwt,
     });
 };

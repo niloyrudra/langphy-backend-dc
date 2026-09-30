@@ -9,6 +9,7 @@ const SHARED_SRC = path.join(REPO_ROOT, "shared", "src");
 module.exports = {
     preset: "ts-jest",
     testEnvironment: "node",
+    setupFiles: ["<rootDir>/tests/setup.ts"],
     testMatch: ["<rootDir>/tests/**/*.test.ts"],
     moduleFileExtensions: ["ts", "js", "json"],
     transform: {
@@ -31,4 +32,7 @@ module.exports = {
         ["^@langphy/shared/(.*)$"]: path.join(SHARED_SRC, "$1.ts"),
     },
     clearMocks: true,
+    // Neon connection warm-up + bcrypt cost 12 hashing on every signup/signin
+    // make integration tests slower than the 5s Jest default.
+    testTimeout: 120000,
 };

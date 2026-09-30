@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
 import { UserModel } from "../models/user.model.js";
 import { OtpModel } from "../models/otp.model.js";
 import { BadRequestError } from "../errors/bad-request-errors.js";
@@ -71,21 +71,23 @@ export const verifyOtpController = async (req: Request, res: Response) => {
         throw new BadRequestError("Email, password and otp are required");
     }
 
-    const valid = await OtpModel.verify(email, otp);
-    if (!valid) {
-        throw new BadRequestError("Invalid or expired verification code.");
-    }
-
-    // Transactional create + outbox enqueue. If the unique-email constraint
-    // fires (race: another verify-otp completed first), we roll back the
-    // outbox row — no event will be published for a user that didn't get
-    // created.
+    // ─────────────────────────────────────────────────────────────────────
+    // Everything — OTP verification, user INSERT, OTP cleanup, outbox
+    // enqueue — happens in ONE transaction. If any step fails, NOTHING is
+    // committed: no user without its user.registered.v1 event, no consumed
+    // OTP without a user.
+    //
+    // (This was previously two tiers: the user INSERT + OTP cleanup ran on
+    // the shared pool (autocommit) while only the outbox row was
+    // transactional — so an outbox/COMMIT failure left a user with NO
+    // event, breaking downstream provisioning. C2 regression.)
+    // ─────────────────────────────────────────────────────────────────────
     const client: PoolClient = await pgPool.connect();
     try {
         await client.query("BEGIN");
 
         // Race guard: another verify-otp may have created the user between
-        // the OTP verification and here.
+        // the client's request and this transaction.
         const existing = await client.query(
             `SELECT id FROM lp_users WHERE email = $1`,
             [email]
@@ -95,10 +97,20 @@ export const verifyOtpController = async (req: Request, res: Response) => {
             throw new BadRequestError("Email in use");
         }
 
-        const user = await UserModel.create(email, password, "email");
-        await OtpModel.cleanup(email);
+        // Atomic OTP verify + mark-used inside the tx (row lock). A
+        // concurrent verify-otp for the same email blocks here and then
+        // sees used=true → fails.
+        const valid = await OtpModel.verifyInTx(client, email, otp);
+        if (!valid) {
+            await client.query("ROLLBACK");
+            throw new BadRequestError("Invalid or expired verification code.");
+        }
 
-        const eventId = uuidv4();
+        // INSERT and enqueue on the SAME transaction client.
+        const user = await UserModel.createInTx(client, email, password, "email");
+        await OtpModel.cleanupInTx(client, email);
+
+        const eventId = crypto.randomUUID();
         await OutboxRepo.enqueue(client, {
             event_id: eventId,
             event_type: "user.registered.v1",
@@ -135,9 +147,5 @@ export const verifyOtpController = async (req: Request, res: Response) => {
 
 // Hash for logging so we don't write plaintext email to logs.
 function hashForLog(s: string): string {
-    // Lazy import to keep this helper colocated with the controller.
-    // (Avoids adding a top-level dependency just for one log line.)
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { createHash } = require("crypto") as typeof import("crypto");
-    return createHash("sha256").update(s).digest("hex").slice(0, 12);
+    return crypto.createHash("sha256").update(s).digest("hex").slice(0, 12);
 }

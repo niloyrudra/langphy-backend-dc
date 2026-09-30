@@ -1,5 +1,5 @@
 import type { Response } from "express";
-import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
 import { validationResult } from "express-validator";
 import { RequestValidationError } from "../errors/request-validation-errors.js";
 import { BadRequestError } from "../errors/bad-request-errors.js";
@@ -28,7 +28,7 @@ export const deleteController = async (req: AuthRequest, res: Response) => {
     }
 
     const envelope = {
-        event_id: uuidv4(),
+        event_id: crypto.randomUUID(),
         event_type: "user.deleted.v1" as const,
         event_version: 1 as const,
         occurred_at: new Date(),

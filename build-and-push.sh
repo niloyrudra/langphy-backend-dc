@@ -51,8 +51,14 @@ docker push $REGISTRY/nlp-service:latest
 
 echo ""
 echo "▶ Building speech-service..."
+# Pass Whisper config through as build args so the baked model matches the
+# runtime env (defaults match docker-compose: small / cpu / int8). The
+# Dockerfile's builder stage relies on these to resolve $MODEL_SIZE etc.
 docker build \
     -t $REGISTRY/speech-service:latest \
+    --build-arg MODEL_SIZE="${WHISPER_MODEL_SIZE:-small}" \
+    --build-arg WHISPER_DEVICE="${WHISPER_DEVICE:-cpu}" \
+    --build-arg WHISPER_COMPUTE_TYPE="${WHISPER_COMPUTE_TYPE:-int8}" \
     -f services/speech-service/Dockerfile \
     ./services/speech-service
 docker push $REGISTRY/speech-service:latest

@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { UserModel } from "../models/user.model.js";
 import { OutboxRepo } from "../repos/outbox.repo.js";
@@ -136,7 +136,7 @@ export const socialAuthController = async (req: Request, res: Response) => {
             hashedPassword,
         );
 
-        const eventId = uuidv4();
+        const eventId = crypto.randomUUID();
         await OutboxRepo.enqueue(client, {
             event_id: eventId,
             event_type: "user.registered.v1",

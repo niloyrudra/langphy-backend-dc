@@ -140,6 +140,14 @@ npm run build -w services/auth -c # build one service, wipe previous dist
 
 # Per-service (run from services/<name>/)
 npm test                          # jest --runInBand (auth + profile only)
+npm test                          # auth ONLY:
+                                  #   unit (mock-pg) + API integration suite against a
+                                  #   dedicated Neon TEST DB. Generate it once:
+                                  #   node services/auth/scripts/create-test-db.cjs
+                                  #   (creates `langphy_auth_test` from AUTH_POSTGRES_DATABASE_URL and
+                                  #    writes gitignored services/auth/.env.test)
+                                  # The integration suite refuses to run unless the DB name
+                                  # contains "test" — it truncates tables between runs.
 
 # Full stack locally
 docker compose up -d

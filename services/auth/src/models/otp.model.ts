@@ -1,5 +1,11 @@
 import crypto from "crypto";
 import { pgPool } from "../db/index.js";
+import type { Pool, PoolClient } from "pg";
+
+/**
+ * Either the shared pool (autocommit) or a caller-owned transaction client.
+ */
+type DbExecutor = Pool | PoolClient;
 
 /**
  * OTP storage and verification.
@@ -58,12 +64,30 @@ export class OtpModel {
      * parallel reuse impossible — Postgres row locks ensure only one
      * concurrent call wins.
      *
-     * Errors bubble — callers (the controller) decide what to do.
+     * Pool version (autocommit). For verification INSIDE a larger
+     * transaction use verifyInTx() so an invalid code doesn't leave a
+     * half-committed signup.
      */
     static async verify(email: string, otp: string): Promise<boolean> {
+        return OtpModel.verifyWithExec(pgPool, email, otp);
+    }
+
+    /**
+     * Same as verify() but runs on the caller's transaction client so the
+     * "OTP consumed" side effect commits atomically with the user INSERT.
+     */
+    static async verifyInTx(client: PoolClient, email: string, otp: string): Promise<boolean> {
+        return OtpModel.verifyWithExec(client, email, otp);
+    }
+
+    private static async verifyWithExec(
+        exec: DbExecutor,
+        email: string,
+        otp: string
+    ): Promise<boolean> {
         const otp_hash = this.hash(otp);
 
-        const result = await pgPool.query(
+        const result = await exec.query(
             `UPDATE otp_verifications
              SET used = true
              WHERE email = $1
@@ -87,7 +111,16 @@ export class OtpModel {
 
     /** Cleanup a specific email's OTP row after successful signup. */
     static async cleanup(email: string): Promise<void> {
-        await pgPool.query(
+        await OtpModel.cleanupWithExec(pgPool, email);
+    }
+
+    /** Same as cleanup() but on the caller's transaction client. */
+    static async cleanupInTx(client: PoolClient, email: string): Promise<void> {
+        await OtpModel.cleanupWithExec(client, email);
+    }
+
+    private static async cleanupWithExec(exec: DbExecutor, email: string): Promise<void> {
+        await exec.query(
             `DELETE FROM otp_verifications
              WHERE email = $1`,
             [email]

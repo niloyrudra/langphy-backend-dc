@@ -38,6 +38,14 @@ ARG GID=1000
 # ── Stage 1: dependency installer ─────────────────────────────────────────────
 FROM python:${PYTHON_VERSION}-slim AS builder
 
+# ⚠️ Top-level ARGs are NOT inherited into stages. Re-declare them here so the
+# model-bake RUN below resolves real values — previously ${MODEL_SIZE} etc.
+# expanded to EMPTY inside this stage, crashing with
+# "ValueError: Invalid model size ''".
+ARG MODEL_SIZE=small
+ARG WHISPER_DEVICE=cpu
+ARG WHISPER_COMPUTE_TYPE=int8
+
 # System deps needed to compile some pip packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \

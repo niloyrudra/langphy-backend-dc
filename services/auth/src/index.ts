@@ -1,17 +1,6 @@
-import express, { type Express } from "express";
-import helmet from "helmet";
-import cors from "cors";
-import bodyParser from "body-parser";
 import type { Server } from "http";
 
-import { signInRouter } from "./routes/signin.js";
-import { signOutRouter } from "./routes/signout.js";
-import { signUpRouter } from "./routes/signup.js";
-import { socialAuthRouter } from "./routes/social-auth.js";
-import { errorHandler } from "./middlewares/error-handler.js";
-import { dbRouter } from "./routes/db-route.js";
-import { resetPasswordByEmailRouter } from "./routes/reset-password.js";
-import { deleteAccountRouter } from "./routes/delete-account.js";
+import { createApp } from "./app.js";
 
 import { initProducer, getProducer, setOutboxWriter } from "./kafka/producer.js";
 import { startOutboxPublisher, stopOutboxPublisher } from "./kafka/outbox.publisher.js";
@@ -34,52 +23,7 @@ try {
 
 const { port } = cfg;
 
-const app: Express = express();
-
-// ─────────────────────────────────────────────────────────────────────────
-// 2. Middleware
-// ─────────────────────────────────────────────────────────────────────────
-app.use(helmet());
-app.use(express.urlencoded({ extended: true, limit: "1mb" }));
-
-const allowedOrigins: string[] = process.env.CORS_ORIGIN
-    ? [process.env.CORS_ORIGIN].filter((origin) => {
-          if (!origin || typeof origin !== "string") return false;
-          try {
-              new URL(origin);
-              return true;
-          } catch {
-              return false;
-          }
-      })
-    : ["https://play.google.com"];
-
-app.use(
-    cors({
-        origin: (origin, callback) => {
-            if (!origin || allowedOrigins.includes(origin)) {
-                callback(null, true);
-            } else {
-                callback(new Error("Not allowed by CORS"));
-            }
-        },
-    })
-);
-
-app.use(bodyParser.json({ limit: "1mb" }));
-
-// ─────────────────────────────────────────────────────────────────────────
-// 3. Routers
-// ─────────────────────────────────────────────────────────────────────────
-app.use(dbRouter);
-app.use(signInRouter);
-app.use(signOutRouter);
-app.use(signUpRouter);
-app.use(socialAuthRouter);
-app.use(resetPasswordByEmailRouter);
-app.use(deleteAccountRouter);
-
-app.use(errorHandler);
+const app = createApp();
 
 // ─────────────────────────────────────────────────────────────────────────
 // 4. Graceful shutdown — registered BEFORE start() so a SIGTERM during

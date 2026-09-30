@@ -1,7 +1,12 @@
 import { pgPool } from "../db/index.js";
 import { BadRequestError } from "../errors/bad-request-errors.js";
 import { Password } from "../services/password.js";
-import type { PoolClient } from "pg";
+import type { Pool, PoolClient } from "pg";
+
+/**
+ * Either the shared pool (autocommit) or a caller-owned transaction client.
+ */
+type DbExecutor = Pool | PoolClient;
 
 export interface User {
     id: string;
@@ -42,12 +47,40 @@ export class UserModel {
      * Create a user. On unique-email violation, raises BadRequestError so the
      * controller can return a 400. Other DB errors bubble to the global
      * error handler.
+     *
+     * NOTE: this runs on the shared pool (autocommit). Controllers that need
+     * the INSERT to be part of a larger transaction MUST use createInTx() —
+     * mixing a pool INSERT with a transaction rolls the "atomicity" promise
+     * back to nothing.
      */
     static async create(email: string, password: string, provider: string): Promise<User> {
         const hashedPassword = await Password.toHash(password);
+        return UserModel.insertUser(pgPool, email, hashedPassword, provider);
+    }
 
+    /**
+     * Create a user inside an existing transaction (the caller's client).
+     * Used by verify-otp so "create user + enqueue user.registered.v1" is a
+     * single COMMIT (C2 regression).
+     */
+    static async createInTx(
+        client: PoolClient,
+        email: string,
+        password: string,
+        provider: string
+    ): Promise<User> {
+        const hashedPassword = await Password.toHash(password);
+        return UserModel.insertUser(client, email, hashedPassword, provider);
+    }
+
+    private static async insertUser(
+        exec: DbExecutor,
+        email: string,
+        hashedPassword: string,
+        provider: string
+    ): Promise<User> {
         try {
-            const result = await pgPool.query<User>(
+            const result = await exec.query<User>(
                 `INSERT INTO lp_users (email, password, provider)
                  VALUES ($1, $2, $3)
                  RETURNING ${USER_COLUMNS}`,

@@ -2,6 +2,7 @@ import type { PoolClient } from "pg";
 import { pgPool } from "../db/index.js";
 import { DeletedUsersModel } from "../models/deleted-users.model.js";
 import { OutboxRepo } from "./outbox.repo.js";
+import { BadRequestError } from "../errors/bad-request-errors.js";
 
 /**
  * Tombstone record. Written when an account is deleted so we can detect
@@ -59,7 +60,7 @@ export class DeletedUsersRepo {
                 [userId]
             );
             if (del.rowCount === 0) {
-                throw new Error(`User not found: ${userId}`);
+                throw new BadRequestError("User not found");
             }
 
             // 2. tombstone (idempotent — re-deleting an already-deleted user is fine)

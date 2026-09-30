@@ -74,3 +74,13 @@ export const socialAuthLimiter = makeLimiter(
     "social-auth",
     "Too many attempts. Please try again in a minute."
 );
+
+// 10 account deletion attempts per 15 min per IP. Deleting an account is
+// high-impact and irreversible; a stolen (or leaked) JWT shouldn't get
+// unlimited tries at it.
+export const deleteAccountLimiter = makeLimiter(
+    15 * 60_000,
+    10,
+    "delete-account",
+    "Too many account deletion attempts. Please try again later."
+);
