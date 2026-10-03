@@ -45,13 +45,6 @@ SEP_PREFIXES: Final[list[str]] = [
     "zurück", "be", "ge", "miss", "wider",
 ]
 
-# ─── German articles by gender/number ──────────────────────────────────────────
-GERMAN_ARTICLES: Final[dict[str, list[str]]] = {
-    "Masc": ["der", "den", "dem", "des", "ein", "einen", "einem"],
-    "Fem":  ["die", "der", "eine", "einer"],
-    "Neut": ["das", "dem", "des", "ein", "eines"],
-}
-
 
 def default_article(gender: str | None, number: str | None) -> str | None:
     """Return default German article for given gender/number."""
@@ -71,8 +64,3 @@ def get_token_color(case: str | None, pos: str) -> str | None:
     if case and case in CASE_COLORS:
         return CASE_COLORS[case]
     return POS_COLORS.get(pos)
-
-
-def get_sep_prefixes() -> list[str]:
-    """Get separable verb prefixes for morphological analysis."""
-    return SEP_PREFIXES

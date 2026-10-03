@@ -1,18 +1,29 @@
-import spacy
-import os
-import json
+import threading
 
+import spacy
+
+from app.config import get_settings
 from app.constants import (
     DE_EN_DICT,
-    CASE_COLORS,
-    POS_COLORS,
     SEP_PREFIXES,
     default_article,
     get_token_color,
 )
 from app.utils import pronunciation_difficulty, pronunciation_score, generate_speaking_feedback
 
-nlp = spacy.load("de_core_news_sm")
+# Load the configured spaCy model exactly once, at import time (single process).
+nlp = spacy.load(get_settings().SPACY_MODEL)
+
+# spaCy's Language object is NOT thread-safe, but FastAPI runs these sync
+# endpoint functions in a thread pool — serialize inference behind a lock so
+# concurrent requests cannot corrupt the shared pipeline state.
+_nlp_lock = threading.Lock()
+
+
+def _run_nlp(text: str):
+    """Run spaCy inference under a lock (thread-safe single-model access)."""
+    with _nlp_lock:
+        return nlp(text)
 
 
 def _dict_lookup(word: str) -> list[str]:
@@ -127,7 +138,7 @@ def _get_meaning(token) -> str | None:
 # ─── endpoints ────────────────────────────────────────────────────────────────
 
 def analyze_text(text: str) -> dict:
-    doc = nlp(text)
+    doc = _run_nlp(text)
     tokens = []
 
     for token in doc:
@@ -162,7 +173,7 @@ def analyze_text(text: str) -> dict:
 
 
 def analyze_lesson(text: str) -> dict:
-    doc = nlp(text)
+    doc = _run_nlp(text)
     tokens = []
 
     for token in doc:
@@ -199,8 +210,8 @@ def analyze_lesson(text: str) -> dict:
 
 
 def analyze_answer(expected: str, user_answer: str) -> dict:
-    expected_doc = nlp(expected)
-    ans_doc = nlp(user_answer)
+    expected_doc = _run_nlp(expected)
+    ans_doc = _run_nlp(user_answer)
     similarity = expected_doc.similarity(ans_doc)
 
     return {
@@ -215,8 +226,8 @@ def analyze_answer(expected: str, user_answer: str) -> dict:
 
 
 def analyze_speaking(expected_text: str, spoken_text: str) -> dict:
-    expected_doc = nlp(expected_text)
-    spoken_doc = nlp(spoken_text)
+    expected_doc = _run_nlp(expected_text)
+    spoken_doc = _run_nlp(spoken_text)
     similarity = expected_doc.similarity(spoken_doc)
     issues = []
 

@@ -18,14 +18,6 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
 
-class AuthError(Exception):
-    """Authentication error with details."""
-    def __init__(self, message: str, code: str = "AUTH_ERROR"):
-        self.message = message
-        self.code = code
-        super().__init__(message)
-
-
 async def get_current_user(
     request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),

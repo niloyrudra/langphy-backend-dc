@@ -39,16 +39,18 @@ class Settings:
         self.HOST = _get_env("HOST", "0.0.0.0")
         self.PORT = _get_env_int("PORT", 8000)
         
-        # spaCy Model
-        self.SPACY_MODEL = _get_env("SPACY_MODEL", "de_core_news_lg")
-        self.DICT_PATH = _get_env("DICT_PATH", "/app/app/de_en_dict.json")
+        # spaCy Model (default matches the wheel installed in requirements.txt)
+        self.SPACY_MODEL = _get_env("SPACY_MODEL", "de_core_news_sm")
         
         # Authentication
         self.JWT_KEY = _get_env("JWT_KEY", "")
         self.JWT_ALGORITHM = _get_env("JWT_ALGORITHM", "HS256")
         self.JWT_AUDIENCE = _get_env("JWT_AUDIENCE", "langphy-client")
         self.JWT_ISSUER = _get_env("JWT_ISSUER", "langphy-auth")
-        
+
+        # Internal service-to-service auth (shared secret with the speech service)
+        self.INTERNAL_SERVICE_TOKEN = os.getenv("INTERNAL_SERVICE_TOKEN")
+
         # Rate limiting
         self.RATE_LIMIT_ENABLED = _get_env_bool("RATE_LIMIT_ENABLED", True)
         self.RATE_LIMIT_REQUESTS = _get_env_int("RATE_LIMIT_REQUESTS", 120)
@@ -66,9 +68,6 @@ class Settings:
         # Logging
         self.LOG_LEVEL = _get_env("LOG_LEVEL", "INFO")
         self.LOG_FORMAT = _get_env("LOG_FORMAT", "json")
-        
-        # Health checks
-        self.HEALTH_CHECK_ENABLED = _get_env_bool("HEALTH_CHECK_ENABLED", True)
     
     def validate(self) -> None:
         """Validate critical settings."""
@@ -87,4 +86,3 @@ def get_settings() -> Settings:
 # Backward compatibility constants (deprecated)
 SERVICE_NAME = get_settings().SERVICE_NAME
 SPACY_MODEL = get_settings().SPACY_MODEL
-DICT_PATH = get_settings().DICT_PATH

@@ -1,18 +1,15 @@
 import logging
-import sys
-import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
-import httpx
 
-from app.nlp import analyze_text, analyze_lesson, analyze_answer, analyze_speaking
+from app.nlp import analyze_text, analyze_lesson, analyze_answer, analyze_speaking, _run_nlp
 from app.schemas import AnalyzeRequest, LessonRequest, AnswerRequest, SpeechRequest
 from app.config import get_settings
 from app.middlewares.cors import setup_cors
-from app.middlewares.rate_limit import get_rate_limiter, add_rate_limit_headers
-from app.middlewares.auth import require_auth
+from app.middlewares.rate_limit import rate_limit_dependency, add_rate_limit_headers
+from app.middlewares.auth import require_auth, require_auth_or_internal_token
 from app.services.validation import (
     validate_text_input,
     validate_lesson_text,
@@ -46,9 +43,8 @@ async def lifespan(app: FastAPI):
         logger.error("Configuration validation failed: %s", e)
         raise
     
-    # Pre-warm spaCy model (import triggers loading)
-    from app.nlp import nlp
-    _ = nlp("Warmup")
+    # Pre-warm spaCy model (already loaded at import; warm the pipeline once)
+    _ = _run_nlp("Warmup")
     
     logger.info("NLP Service ready on port %d", settings.PORT)
     yield
@@ -112,8 +108,7 @@ async def readiness():
     
     # Check spaCy model
     try:
-        from app.nlp import nlp
-        _ = nlp("health check")
+        _ = _run_nlp("health check")
         checks["spacy_model"] = {"status": "healthy"}
     except Exception as e:
         logger.warning("spaCy model health check failed: %s", e)
@@ -139,28 +134,28 @@ def health():
 
 # ── Routes ──────────────────────────────────────────────────────────────────
 
-@app.post("/api/nlp/analyze", dependencies=[Depends(require_auth)])
+@app.post("/api/nlp/analyze", dependencies=[Depends(rate_limit_dependency), Depends(require_auth)])
 def analyze_text_data(req: AnalyzeRequest):
     """Analyze German text - tokenize, POS tag, lemmatize."""
     text = validate_text_input(req.text, field_name="text")
     return analyze_text(text)
 
 
-@app.post("/api/nlp/analyze/lesson", dependencies=[Depends(require_auth)])
+@app.post("/api/nlp/analyze/lesson", dependencies=[Depends(rate_limit_dependency), Depends(require_auth)])
 def analyze_lesson_data(req: LessonRequest):
     """Analyze lesson text with dictionary lookups and pronunciation hints."""
     text = validate_lesson_text(req.text)
     return analyze_lesson(text)
 
 
-@app.post("/api/nlp/analyze/answer", dependencies=[Depends(require_auth)])
+@app.post("/api/nlp/analyze/answer", dependencies=[Depends(rate_limit_dependency), Depends(require_auth)])
 def analyze_answer_data(data: AnswerRequest):
     """Compare expected vs user answer using spaCy similarity."""
     expected, user_answer = validate_answer_text(data.expected, data.user_answer)
     return analyze_answer(expected, user_answer)
 
 
-@app.post("/api/nlp/analyze/evaluate-speaking", dependencies=[Depends(require_auth)])
+@app.post("/api/nlp/analyze/evaluate-speaking", dependencies=[Depends(rate_limit_dependency), Depends(require_auth_or_internal_token)])
 def analyze_speaking_data(data: SpeechRequest):
     """Evaluate spoken text against expected text for pronunciation scoring."""
     expected, spoken = validate_speaking_text(data.expected_text, data.spoken_text)

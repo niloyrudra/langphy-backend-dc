@@ -9,7 +9,6 @@ import json
 import logging
 import time
 from typing import Optional, Any, Dict
-from functools import wraps
 
 from app.config import get_settings
 from app.services.redis_pool import get_main_redis
@@ -189,31 +188,3 @@ def hash_audio_content(audio_bytes: bytes) -> str:
     return hashlib.sha256(audio_bytes).hexdigest()
 
 
-# Decorator for automatic caching
-def cached(cache_manager: CacheManager, key_func, ttl: Optional[int] = None):
-    """Decorator to automatically cache function results."""
-    def decorator(func):
-        @wraps(func)
-        async def async_wrapper(*args, **kwargs):
-            key = key_func(*args, **kwargs)
-            cached_value = await cache_manager.get(key)
-            if cached_value is not None:
-                return cached_value
-            
-            result = await func(*args, **kwargs)
-            await cache_manager.set(key, value=result, ttl=ttl)
-            return result
-        
-        @wraps(func)
-        def sync_wrapper(*args, **kwargs):
-            key = key_func(*args, **kwargs)
-            # For sync functions, we can't easily use async cache
-            # This would need a sync Redis client
-            return func(*args, **kwargs)
-        
-        import asyncio
-        if asyncio.iscoroutinefunction(func):
-            return async_wrapper
-        return sync_wrapper
-    
-    return decorator

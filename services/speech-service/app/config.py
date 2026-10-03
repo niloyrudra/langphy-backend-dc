@@ -103,16 +103,15 @@ class Settings:
         self.ENABLE_TRANSCRIPTION_CACHE = _get_env_bool("ENABLE_TRANSCRIPTION_CACHE", False)
         self.TRANSCRIPTION_CACHE_TTL_SECONDS = _get_env_int("TRANSCRIPTION_CACHE_TTL_SECONDS", 86400)
         
-        # Performance: Streaming uploads
-        self.ENABLE_STREAMING_UPLOAD = _get_env_bool("ENABLE_STREAMING_UPLOAD", False)
-        self.STREAMING_CHUNK_SIZE = _get_env_int("STREAMING_CHUNK_SIZE", 8192)
-        
         # Authentication
         self.JWT_KEY = _get_env("JWT_KEY", "")
         self.JWT_ALGORITHM = _get_env("JWT_ALGORITHM", "HS256")
         self.JWT_AUDIENCE = _get_env("JWT_AUDIENCE", "langphy-client")
         self.JWT_ISSUER = _get_env("JWT_ISSUER", "langphy-auth")
-        
+
+        # Internal service-to-service auth (shared secret with the NLP service)
+        self.INTERNAL_SERVICE_TOKEN = os.getenv("INTERNAL_SERVICE_TOKEN")
+
         # Rate limiting
         self.RATE_LIMIT_ENABLED = _get_env_bool("RATE_LIMIT_ENABLED", True)
         self.RATE_LIMIT_REQUESTS = _get_env_int("RATE_LIMIT_REQUESTS", 60)

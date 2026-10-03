@@ -19,6 +19,9 @@ services:
       WHISPER_DEVICE: cpu
       WHISPER_COMPUTE_TYPE: int8
       HF_HOME: /root/.cache/huggingface
+      # Required - set JWT_KEY in your .env (config.validate() fails without it)
+      JWT_KEY: ${JWT_KEY}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-token}
     volumes:
       - whisper_cache:/root/.cache/huggingface
       - audio_tmp:/tmp
@@ -43,6 +46,7 @@ services:
       WHISPER_DEVICE: cpu
       WHISPER_COMPUTE_TYPE: int8
       HF_HOME: /root/.cache/huggingface
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-token}
     volumes:
       - whisper_cache:/root/.cache/huggingface
       - audio_tmp:/tmp

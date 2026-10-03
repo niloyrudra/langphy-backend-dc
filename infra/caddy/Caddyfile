@@ -101,6 +101,9 @@
     }
 
     handle /api/nlp/* {
+        request_body {
+            max_size 1MB
+        }
         reverse_proxy {$NLP_HOST}:{$NLP_PORT} {
             transport http {
                 read_timeout 30s
@@ -111,7 +114,7 @@
 
     handle /api/speech/* {
         request_body {
-            max_size 50MB
+            max_size 12MB
         }
         reverse_proxy {$SPEECH_API_HOST}:{$SPEECH_API_PORT} {
             transport http {

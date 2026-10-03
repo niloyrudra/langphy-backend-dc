@@ -8,7 +8,12 @@ from fastapi.security import HTTPAuthorizationCredentials
 
 import jwt
 
-from app.middlewares.auth import get_current_user, get_current_user_optional, require_auth
+from app.middlewares.auth import (
+    get_current_user,
+    get_current_user_optional,
+    require_auth,
+    require_auth_or_internal_token,
+)
 
 
 class TestAuthMiddleware:
@@ -117,3 +122,64 @@ class TestAuthMiddleware:
         user = await get_current_user_optional(mock_request, credentials)
         assert user is not None
         assert user["user_id"] == "user-456"
+
+
+class TestInternalTokenAuth:
+    """Tests for require_auth_or_internal_token (speech-worker -> NLP auth)."""
+
+    @pytest.fixture
+    def mock_request(self):
+        request = MagicMock()
+        request.client.host = "127.0.0.1"
+        request.state = MagicMock()
+        request.headers = {}
+        return request
+
+    @pytest.mark.asyncio
+    async def test_internal_token_accepted(self, mock_request):
+        """A matching X-Internal-Token bypasses JWT (service-to-service call)."""
+        mock_request.headers = {"X-Internal-Token": "s3cret-shared-token"}
+        with patch("app.middlewares.auth.get_settings") as mock_get_settings:
+            mock_get_settings.return_value.INTERNAL_SERVICE_TOKEN = "s3cret-shared-token"
+            result = await require_auth_or_internal_token(mock_request, None)
+        assert result == {"internal": True}
+
+    @pytest.mark.asyncio
+    async def test_wrong_internal_token_rejected(self, mock_request):
+        """A wrong internal token must not authenticate."""
+        mock_request.headers = {"X-Internal-Token": "wrong-token"}
+        with patch("app.middlewares.auth.get_settings") as mock_get_settings:
+            mock_get_settings.return_value.INTERNAL_SERVICE_TOKEN = "s3cret-shared-token"
+            with pytest.raises(HTTPException) as exc_info:
+                await require_auth_or_internal_token(mock_request, None)
+        assert exc_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_missing_header_requires_jwt(self, mock_request):
+        """Without the internal header, a valid JWT is still accepted."""
+        payload = {
+            "sub": "user-456",
+            "exp": 9999999999,
+            "iat": 1000000000,
+            "aud": "langphy-client",
+            "iss": "langphy-auth",
+        }
+        token = jwt.encode(payload, "test-secret-key-for-testing-only", algorithm="HS256")
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
+
+        from app.config import Settings
+        settings = Settings()
+        settings.INTERNAL_SERVICE_TOKEN = "s3cret-shared-token"
+
+        with patch("app.middlewares.auth.get_settings", return_value=settings):
+            result = await require_auth_or_internal_token(mock_request, credentials)
+        assert result["user_id"] == "user-456"
+
+    @pytest.mark.asyncio
+    async def test_missing_header_and_jwt_rejected(self, mock_request):
+        """No header and no credentials -> 401."""
+        with patch("app.middlewares.auth.get_settings") as mock_get_settings:
+            mock_get_settings.return_value.INTERNAL_SERVICE_TOKEN = "s3cret-shared-token"
+            with pytest.raises(HTTPException) as exc_info:
+                await require_auth_or_internal_token(mock_request, None)
+        assert exc_info.value.status_code == 401

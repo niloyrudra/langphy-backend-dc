@@ -2,118 +2,130 @@ import os
 import base64
 import json
 import logging
-import asyncio
 from typing import Optional
 
 import redis
 
 from app.config import get_settings
-from app.services.circuit_breaker import get_circuit_breaker, CircuitBreakerOpen
-from app.services.retry import retry, NLP_SERVICE_RETRY_POLICY
+from app.services.circuit_breaker import CircuitBreakerOpen
 from app.services.logging import set_correlation_id, set_request_context, clear_correlation_id, clear_request_context
-from app.services.cache import (
-    get_cached_nlp_result,
-    set_cached_nlp_result,
-    hash_audio_content,
-    get_cached_transcription,
-    set_cached_transcription,
-)
+from app.services.cache import hash_audio_content, cache_key_for_text
 from app.services.utils import normalize_text
 
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
-# Circuit breaker for NLP service
-nlp_circuit_breaker = get_circuit_breaker(
-    name="nlp-service",
-    failure_threshold=5,
-    recovery_timeout=30.0,
-    expected_exception=Exception,
-)
+# Single reusable sync Redis client (the worker process has no event loop).
+_redis_client: Optional[redis.Redis] = None
 
 
 def _get_redis() -> redis.Redis:
-    """Get worker Redis connection (sync for RQ compatibility)."""
-    return redis.Redis(
-        host=settings.REDIS_HOST,
-        port=settings.REDIS_PORT,
-        password=settings.REDIS_PASSWORD,
-        db=settings.REDIS_DB,
-        decode_responses=True,
-    )
+    """Get (or create) the worker's sync Redis client."""
+    global _redis_client
+    if _redis_client is None:
+        _redis_client = redis.Redis(
+            host=settings.REDIS_HOST,
+            port=settings.REDIS_PORT,
+            password=settings.REDIS_PASSWORD,
+            db=settings.REDIS_DB,
+            decode_responses=True,
+        )
+    return _redis_client
 
 
 def set_job(job_id: str, data: dict) -> None:
     _get_redis().setex(f"speech:{job_id}", settings.JOB_TTL_SECONDS, json.dumps(data))
 
 
-@retry(NLP_SERVICE_RETRY_POLICY)
-def _call_nlp_with_retry(expected_text: str, spoken_text: str) -> dict:
+def _call_nlp_on_text(expected_text: str, spoken_text: str) -> dict:
     """
-    Call NLP service with retry and circuit breaker protection.
-    
-    This function is wrapped with retry logic and called through the circuit breaker.
+    Single chokepoint to the NLP service — circuit breaker + retry + graceful
+    fallback logic all live in app.services.nlp_client.evaluate_text_sync
+    (the async twin is called evaluate_text). Local import avoids a cycle.
     """
-    # Import here to avoid circular imports
     from app.services.nlp_client import evaluate_text_sync
-    
-    def _nlp_call():
-        return nlp_circuit_breaker.call(
-            evaluate_text_sync,
-            expected_text,
-            spoken_text,
+    return evaluate_text_sync(expected_text, spoken_text)
+
+
+def _get_cached_nlp_result_sync(expected_text: str, spoken_text: str) -> Optional[dict]:
+    """Sync Redis lookup for the NLP result cache (worker-safe, no event loop)."""
+    if not settings.ENABLE_NLP_CACHE:
+        return None
+    try:
+        key = f"nlp:{cache_key_for_text(f'{expected_text}|{spoken_text}')}"
+        raw = _get_redis().get(key)
+        return json.loads(raw) if raw else None
+    except Exception as e:
+        logger.warning("NLP cache GET failed: %s", e)
+        return None
+
+
+def _set_cached_nlp_result_sync(expected_text: str, spoken_text: str, result: dict) -> None:
+    """Sync Redis write for the NLP result cache (worker-safe, no event loop)."""
+    if not settings.ENABLE_NLP_CACHE:
+        return
+    try:
+        key = f"nlp:{cache_key_for_text(f'{expected_text}|{spoken_text}')}"
+        _get_redis().setex(
+            key, settings.NLP_CACHE_TTL_SECONDS, json.dumps(result, separators=(",", ":"))
         )
-    
-    return _nlp_call()
+    except Exception as e:
+        logger.warning("NLP cache SET failed: %s", e)
 
 
 def _call_nlp_with_cache(expected_text: str, spoken_text: str) -> dict:
     """
-    Call NLP service with caching, circuit breaker, and retry protection.
-    Synchronous wrapper for use in RQ worker.
+    Call the NLP service with caching, circuit breaker, and retry protection.
+    Synchronous and worker-safe (no asyncio.run / shared event-loop pool).
     """
-    # Check cache first (use asyncio.run for async cache)
-    try:
-        cached_result = asyncio.run(get_cached_nlp_result(expected_text, spoken_text))
-        if cached_result is not None:
-            logger.info("NLP cache HIT for expected=%r spoken=%r", expected_text[:30], spoken_text[:30])
-            return cached_result
-    except Exception as e:
-        logger.warning("NLP cache GET failed: %s", e)
-    
+    # Check cache first
+    cached_result = _get_cached_nlp_result_sync(expected_text, spoken_text)
+    if cached_result is not None:
+        logger.info("NLP cache HIT for expected=%r spoken=%r", expected_text[:30], spoken_text[:30])
+        return cached_result
+
     logger.info("NLP cache MISS for expected=%r spoken=%r", expected_text[:30], spoken_text[:30])
-    
-    # Call with circuit breaker + retry
-    nlp_result = _call_nlp_with_retry(expected_text, spoken_text)
-    
-    # Cache successful results
-    if "error" not in nlp_result or not nlp_result.get("error"):
-        try:
-            asyncio.run(set_cached_nlp_result(expected_text, spoken_text, nlp_result))
-        except Exception as e:
-            logger.warning("NLP cache SET failed: %s", e)
-    
+
+    # Call through the single breaker + retry chokepoint
+    nlp_result = _call_nlp_on_text(expected_text, spoken_text)
+
+    # Only cache genuine analysis results — never error/fallback payloads (the
+    # 401/5xx fallbacks would otherwise poison the cache for the full TTL).
+    if (
+        nlp_result.get("similarity") is not None
+        and nlp_result.get("pronunciation_score") is not None
+        and not nlp_result.get("error")
+    ):
+        _set_cached_nlp_result_sync(expected_text, spoken_text, nlp_result)
+    else:
+        logger.info("NLP result not cacheable (missing analysis fields), skipping cache")
+
     return nlp_result
 
 
 def _get_cached_transcription(audio_hash: str) -> Optional[dict]:
-    """Synchronous wrapper for getting cached transcription."""
+    """Sync Redis lookup for the transcription cache (worker-safe)."""
     if not settings.ENABLE_TRANSCRIPTION_CACHE:
         return None
     try:
-        return asyncio.run(get_cached_transcription(audio_hash))
+        raw = _get_redis().get(f"transcribe:{audio_hash[:16]}")
+        return json.loads(raw) if raw else None
     except Exception as e:
         logger.warning("Transcription cache GET failed: %s", e)
         return None
 
 
 def _set_cached_transcription(audio_hash: str, transcription: dict) -> None:
-    """Synchronous wrapper for setting cached transcription."""
+    """Sync Redis write for the transcription cache (worker-safe)."""
     if not settings.ENABLE_TRANSCRIPTION_CACHE:
         return
     try:
-        asyncio.run(set_cached_transcription(audio_hash, transcription))
+        _get_redis().setex(
+            f"transcribe:{audio_hash[:16]}",
+            settings.TRANSCRIPTION_CACHE_TTL_SECONDS,
+            json.dumps(transcription, separators=(",", ":")),
+        )
     except Exception as e:
         logger.warning("Transcription cache SET failed: %s", e)
 

@@ -7,7 +7,6 @@
 
 # ── Build arguments for customization ──────────────────────────────────────────
 ARG PYTHON_VERSION=3.11
-ARG SPACY_MODEL=de_core_news_lg
 ARG UID=1000
 ARG GID=1000
 

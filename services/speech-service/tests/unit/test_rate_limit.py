@@ -182,6 +182,31 @@ class TestRateLimiterIntegration:
             assert allowed is False
             assert info["remaining"] == 0
 
+    @pytest.mark.asyncio
+    async def test_rejected_requests_are_not_recorded(self, mock_redis):
+        """Rejected requests must NOT be added to the zset (poisoned-window fix)."""
+        with patch("redis.asyncio.Redis", return_value=mock_redis):
+            limiter = RateLimiter()
+            limiter._redis = mock_redis
+
+            # zrem + zcard report count == limit -> request is rejected.
+            mock_redis.pipeline.return_value.execute = AsyncMock(return_value=[0, 10, 0, 0])
+            mock_redis.zrange = AsyncMock(return_value=[("1234567890", 1234567890.0)])
+
+            allowed, info = await limiter.check_rate_limit(
+                identifier="user:123",
+                endpoint="/api/test",
+                limit=10,
+                window_seconds=60,
+            )
+
+            assert allowed is False
+
+            # Only the count pipeline was created — the record pipeline
+            # (zadd + expire) must never run for a rejected request.
+            mock_redis.pipeline.assert_called_once()
+            mock_redis.pipeline.return_value.zadd.assert_not_called()
+
 
 class TestRateLimitDependency:
     """Test FastAPI rate limit dependency."""

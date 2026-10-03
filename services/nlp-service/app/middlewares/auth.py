@@ -4,6 +4,7 @@ JWT Authentication Middleware for NLP Service
 Validates JWT tokens from Authorization header using shared secret.
 Integrates with the same JWT_KEY used by other Langphy services.
 """
+import hmac
 import logging
 from typing import Optional
 
@@ -115,3 +116,28 @@ async def get_current_user_optional(
 def require_auth(user: dict = Depends(get_current_user)) -> dict:
     """Dependency that requires authentication."""
     return user
+
+
+async def require_auth_or_internal_token(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> dict:
+    """
+    Accept EITHER a valid user JWT OR the shared internal service token
+    (X-Internal-Token header, compared in constant time).
+
+    Used for backend-to-backend endpoints (e.g. evaluate-speaking called by the
+    speech-worker) that cannot carry an end-user JWT. If INTERNAL_SERVICE_TOKEN
+    is not configured the internal path is disabled and a valid JWT is required,
+    preserving the previous behaviour.
+    """
+    settings = get_settings()
+    internal_token = settings.INTERNAL_SERVICE_TOKEN
+
+    if internal_token:
+        supplied = request.headers.get("X-Internal-Token")
+        if supplied and hmac.compare_digest(supplied, internal_token):
+            request.state.internal = True
+            return {"internal": True}
+
+    return await get_current_user(request, credentials)

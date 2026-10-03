@@ -111,21 +111,25 @@ class RateLimiter:
         key = self._get_key(identifier, endpoint)
         now = time.time()
         window_start = now - window_seconds
-        
-        # Use Redis sorted set for sliding window
+
+        # Use Redis sorted set for sliding window. Expired entries are removed
+        # and the current request is COUNTED first. A rejected request must
+        # NEVER be recorded, otherwise the window gets poisoned by its own
+        # 429 responses and stays full even after the client stops.
         pipe = self.redis.pipeline()
-        # Remove expired entries
         pipe.zremrangebyscore(key, 0, window_start)
-        # Count current requests
         pipe.zcard(key)
-        # Add current request
-        pipe.zadd(key, {str(now): now})
-        # Set expiry
-        pipe.expire(key, window_seconds + 1)
         results = await pipe.execute()
-        
+
         current_count = results[1]
         allowed = current_count < limit + burst
+
+        # Record the request only when allowed.
+        if allowed:
+            record = self.redis.pipeline()
+            record.zadd(key, {str(now): now})
+            record.expire(key, window_seconds + 1)
+            await record.execute()
         
         # Calculate reset time (when oldest request expires)
         oldest = await self.redis.zrange(key, 0, 0, withscores=True)
@@ -160,21 +164,21 @@ async def rate_limit_dependency(
 ) -> None:
     """
     FastAPI dependency for rate limiting.
-    
+
     Uses user_id if authenticated, otherwise falls back to client IP.
     """
     settings = get_settings()
-    
+
     if not settings.RATE_LIMIT_ENABLED:
         return
-    
+
     # Determine identifier: user_id > IP
     if user and user.get("user_id"):
         identifier = f"user:{user['user_id']}"
     else:
         client_host = request.client.host if request.client else "unknown"
         identifier = f"ip:{client_host}"
-    
+
     endpoint = request.url.path
     
     allowed, info = await limiter.check_rate_limit(

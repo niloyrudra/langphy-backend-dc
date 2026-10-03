@@ -14,7 +14,7 @@ class TestSettings:
         settings = Settings()
         assert settings.SERVICE_NAME == "nlp-service"
         assert settings.PORT == 8000
-        assert settings.SPACY_MODEL == "de_core_news_lg"
+        assert settings.SPACY_MODEL == "de_core_news_sm"
         assert settings.MAX_TEXT_LENGTH == 10000
         assert settings.MAX_LESSON_TEXT_LENGTH == 50000
     
@@ -56,7 +56,6 @@ class TestBackwardCompatibility:
     """Test backward compatibility constants."""
     
     def test_constants_exist(self):
-        from app.config import SERVICE_NAME, SPACY_MODEL, DICT_PATH
+        from app.config import SERVICE_NAME, SPACY_MODEL
         assert SERVICE_NAME == "nlp-service"
-        assert SPACY_MODEL == "de_core_news_lg"
-        assert DICT_PATH == "/app/app/de_en_dict.json"
+        assert SPACY_MODEL == "de_core_news_sm"

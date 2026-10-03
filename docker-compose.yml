@@ -46,6 +46,10 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    # Cap Redis memory and prefer evicting keys that already have a TTL
+    # (audio blobs, cache, rate-limit counters, job status). RQ queue entries
+    # have no TTL, so queued jobs are protected from eviction.
+    command: redis-server --maxmemory ${REDIS_MAXMEMORY:-256mb} --maxmemory-policy volatile-lru
     volumes:
       - redis_data:/data
     healthcheck:
@@ -103,6 +107,7 @@ services:
       PG_DB: langphy_auth
       POSTGRES_DATABASE_URL: ${AUTH_POSTGRES_DATABASE_URL:-}
       RESEND_API_KEY: ${RESEND_API_KEY}
+      FROM_EMAIL: ${FROM_EMAIL:-}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
       GOOGLE_WEB_CLIENT_ID: ${GOOGLE_WEB_CLIENT_ID}
       GOOGLE_ANDROID_CLIENT_ID: ${GOOGLE_ANDROID_CLIENT_ID}
@@ -419,6 +424,8 @@ services:
     restart: unless-stopped
     environment:
       JWT_KEY: ${JWT_KEY}
+      # Shared service-to-service secret for the speech-worker -> NLP call
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
     deploy:
       resources:
         limits:
@@ -450,6 +457,7 @@ services:
       WHISPER_NUM_WORKERS: "1"
       HF_HOME: /root/.cache/huggingface
       JWT_KEY: ${JWT_KEY}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
     volumes:
       - audio_tmp:/tmp
       - whisper_cache:/root/.cache/huggingface
@@ -486,6 +494,7 @@ services:
       WHISPER_COMPUTE_TYPE: int8
       WHISPER_NUM_WORKERS: "1"
       HF_HOME: /root/.cache/huggingface
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
     volumes:
       - audio_tmp:/tmp
       - whisper_cache:/root/.cache/huggingface

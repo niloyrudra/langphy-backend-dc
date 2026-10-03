@@ -9,7 +9,6 @@ import time
 import threading
 from enum import Enum
 from typing import Callable, TypeVar, Optional
-from functools import wraps
 
 logger = logging.getLogger(__name__)
 
@@ -162,29 +161,3 @@ def get_circuit_breaker(
                 expected_exception=expected_exception,
             )
         return _breakers[name]
-
-
-def circuit_breaker(
-    name: str,
-    failure_threshold: int = 5,
-    recovery_timeout: float = 30.0,
-    expected_exception: type = Exception,
-):
-    """Decorator for adding circuit breaker to a function."""
-    breaker = get_circuit_breaker(name, failure_threshold, recovery_timeout, expected_exception)
-    
-    def decorator(func: Callable[..., T]) -> Callable[..., T]:
-        @wraps(func)
-        def sync_wrapper(*args, **kwargs):
-            return breaker.call(func, *args, **kwargs)
-        
-        @wraps(func)
-        async def async_wrapper(*args, **kwargs):
-            return await breaker.call_async(func, *args, **kwargs)
-        
-        import asyncio
-        if asyncio.iscoroutinefunction(func):
-            return async_wrapper
-        return sync_wrapper
-    
-    return decorator

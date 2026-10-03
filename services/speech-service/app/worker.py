@@ -8,12 +8,10 @@ import time
 import redis
 from rq import Queue
 from rq.worker import SimpleWorker
-from rq.job import Job
-from rq.timeouts import JobTimeoutException
 
 from app.model import load_model
 from app.config import get_settings
-from app.services.logging import setup_logging, LoggingMixin
+from app.services.logging import setup_logging
 
 # Configure structured logging
 settings = get_settings()
@@ -31,8 +29,6 @@ QUEUE_NAME = "speech"
 
 # Global state for graceful shutdown
 _shutdown_event = threading.Event()
-_worker_instance = None
-_current_job: Job = None
 
 
 def _get_redis() -> redis.Redis:
@@ -83,33 +79,27 @@ class GracefulWorker(SimpleWorker):
         signal.signal(signal.SIGINT, signal_handler)
     
     def execute_job(self, job, queue):
-        """Override to track current job and check shutdown flag."""
-        global _current_job
-        _current_job = job
+        """Override to add structured job logging and shutdown-aware requeue."""
         _shutdown_event.clear()
-        
+        start_time = time.time()
+
         try:
             # Check if shutdown was requested before starting
             if self._shutdown_requested:
                 logger.info("Shutdown requested, requeueing job %s", job.id)
                 job.requeue()
                 return False
-            
+
             logger.info("Starting job %s (%s)", job.id, job.func_name)
-            start_time = time.time()
-            
+
             result = super().execute_job(job, queue)
-            
-            duration = time.time() - start_time
-            logger.info("Job %s completed in %.2fs", job.id, duration)
+
+            logger.info("Job %s completed in %.2fs", job.id, time.time() - start_time)
             return result
-            
+
         except Exception as e:
-            duration = time.time() - start_time
-            logger.exception("Job %s failed after %.2fs: %s", job.id, duration, e)
+            logger.exception("Job %s failed after %.2fs: %s", job.id, time.time() - start_time, e)
             raise
-        finally:
-            _current_job = None
     
     def should_stop(self) -> bool:
         """Check if worker should stop (for periodic checks during long jobs)."""
@@ -156,47 +146,14 @@ def boot_worker():
     
     conn = _get_redis()
     queues = [Queue(QUEUE_NAME, connection=conn)]
-    
-    global _worker_instance
-    _worker_instance = NoSigalrmWorker(queues, connection=conn)
-    
+
+    worker = NoSigalrmWorker(queues, connection=conn)
+
     # Log worker info
     logger.info("Worker PID: %d, Queues: %s", os.getpid(), [q.name for q in queues])
-    
+
     # Start working
-    _worker_instance.work(with_scheduler=False)
-
-
-def shutdown_worker(timeout: float = 30.0) -> bool:
-    """
-    Request graceful shutdown of the worker.
-    
-    Args:
-        timeout: Maximum time to wait for current job to complete
-    
-    Returns:
-        True if shutdown completed gracefully, False if timed out
-    """
-    global _worker_instance
-    
-    if _worker_instance is None:
-        logger.warning("No worker instance to shut down")
-        return True
-    
-    logger.info("Requesting graceful shutdown (timeout=%.1fs)...", timeout)
-    _worker_instance._shutdown_requested = True
-    _shutdown_event.set()
-    
-    # Wait for current job to complete
-    start = time.time()
-    while _current_job is not None:
-        if time.time() - start > timeout:
-            logger.warning("Graceful shutdown timeout after %.1fs, forcing exit", timeout)
-            return False
-        time.sleep(0.5)
-    
-    logger.info("Graceful shutdown completed")
-    return True
+    worker.work(with_scheduler=False)
 
 
 if __name__ == "__main__":
