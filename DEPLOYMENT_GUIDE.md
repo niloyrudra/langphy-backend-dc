@@ -1,6 +1,12 @@
 # Langphy Backend — Full Architecture Picture
 ## Current (Kubernetes) → Production (Railway + Docker Compose)
 
+> ⚠️ **Historical record.** This file documents the K8s→Compose migration. The
+> current Railway deployment runs a **single-node KRaft Kafka in-compose**
+> (≈ $2.40/mo with Serverless) — see `RAILWAY_DEPLOY.md` Step 1 and `LOCAL_DEV.md`
+> for the live setup. Kubernetes manifests for a future AWS/GCP move live in `k8s/`
+> (see `KUBERNETES_GUIDE.md`).
+
 ---
 
 ## Complete Service Inventory

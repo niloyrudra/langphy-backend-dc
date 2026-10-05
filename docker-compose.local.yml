@@ -73,32 +73,37 @@ services:
       - "6379:6379"
 
   kafka:
-    image: confluentinc/cp-kafka:7.5.0
+    image: apache/kafka:3.7.2
     restart: unless-stopped
+    # ⚠ Local == Production parity: same single-node KRaft image & env as the
+    #   top/live section of docker-compose.yml (no Zookeeper).
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx256m"
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: "${KAFKA_ADVERTISED_LISTENERS:-PLAINTEXT://kafka:9092}"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-    depends_on:
-      - zookeeper
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_RETENTION_HOURS: 48
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
     networks:
       - langphy
     ports:
       - "9092:9092"
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    restart: unless-stopped
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    networks:
-      - langphy
 
   # ── PostgreSQL Services (build from source) ───────────────────────────────
 
@@ -388,73 +393,79 @@ services:
     ports:
       - "8000:8000"
 
-  # speech-api:
-  #   build:
-  #     context: ./services/speech-service
-  #     dockerfile: Dockerfile
-  #     args:
-  #       UID: "1000"
-  #       GID: "1000"
-  #       MODEL_SIZE: ${WHISPER_MODEL_SIZE}
-  #       WHISPER_DEVICE: ${WHISPER_DEVICE}
-  #       WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE}
-  #       WHISPER_NUM_WORKERS: ${WHISPER_NUM_WORKERS}
-  #   restart: unless-stopped
-  #   command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
-  #   environment:
-  #     REDIS_HOST: redis
-  #     REDIS_PORT: "6379"
-  #     NLP_SERVICE_URL: http://nlp:8000
-  #     WHISPER_MODEL_SIZE: ${WHISPER_MODEL_SIZE}
-  #     WHISPER_DEVICE: ${WHISPER_DEVICE}
-  #     WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE}
-  #     WHISPER_NUM_WORKERS: ${WHISPER_NUM_WORKERS}
-  #     HF_HOME: /root/.cache/huggingface
-  #   volumes:
-  #     - audio_tmp:/tmp
-  #     - whisper_cache:/root/.cache/huggingface
-  #   depends_on:
-  #     redis:
-  #       condition: service_healthy
-  #     nlp:
-  #       condition: service_started
-  #   networks:
-  #     - langphy
-  #   ports:
-  #     - "8001:8001"
-  #
-  # speech-worker:
-  #   build:
-  #     context: ./services/speech-service
-  #     dockerfile: Dockerfile
-  #     args:
-  #       UID: "1000"
-  #       GID: "1000"
-  #       MODEL_SIZE: ${WHISPER_MODEL_SIZE}
-  #       WHISPER_DEVICE: ${WHISPER_DEVICE}
-  #       WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE}
-  #       WHISPER_NUM_WORKERS: ${WHISPER_NUM_WORKERS}
-  #   restart: unless-stopped
-  #   command: ["python", "app/worker.py"]
-  #   environment:
-  #     REDIS_HOST: redis
-  #     REDIS_PORT: "6379"
-  #     NLP_SERVICE_URL: http://nlp:8000
-  #     WHISPER_MODEL_SIZE: ${WHISPER_MODEL_SIZE}
-  #     WHISPER_DEVICE: ${WHISPER_DEVICE}
-  #     WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE}
-  #     WHISPER_NUM_WORKERS: ${WHISPER_NUM_WORKERS}
-  #     HF_HOME: /root/.cache/huggingface
-  #   volumes:
-  #     - audio_tmp:/tmp
-  #     - whisper_cache:/root/.cache/huggingface
-  #   depends_on:
-  #     redis:
-  #       condition: service_healthy
-  #     nlp:
-  #       condition: service_started
-#   networks:
-  #     - langphy
+  # ── Speech (Faster-Whisper) ───────────────────────────────────────────
+  # First build bakes the Whisper model into the image (~600 MB, takes a while).
+
+  speech-api:
+    build:
+      context: ./services/speech-service
+      dockerfile: Dockerfile
+      args:
+        UID: "1000"
+        GID: "1000"
+        MODEL_SIZE: ${WHISPER_MODEL_SIZE:-small}
+        WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+        WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
+        WHISPER_NUM_WORKERS: ${WHISPER_NUM_WORKERS:-1}
+    restart: unless-stopped
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      NLP_SERVICE_URL: http://nlp:8000
+      WHISPER_MODEL_SIZE: ${WHISPER_MODEL_SIZE:-small}
+      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+      WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
+      WHISPER_NUM_WORKERS: ${WHISPER_NUM_WORKERS:-1}
+      HF_HOME: /root/.cache/huggingface
+      JWT_KEY: ${JWT_KEY}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-token}
+    volumes:
+      - audio_tmp:/tmp
+      - whisper_cache:/root/.cache/huggingface
+    depends_on:
+      redis:
+        condition: service_healthy
+      nlp:
+        condition: service_started
+    networks:
+      - langphy
+    ports:
+      - "8001:8001"
+
+  speech-worker:
+    build:
+      context: ./services/speech-service
+      dockerfile: Dockerfile
+      args:
+        UID: "1000"
+        GID: "1000"
+        MODEL_SIZE: ${WHISPER_MODEL_SIZE:-small}
+        WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+        WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
+        WHISPER_NUM_WORKERS: ${WHISPER_NUM_WORKERS:-1}
+    restart: unless-stopped
+    command: ["python", "app/worker.py"]
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      NLP_SERVICE_URL: http://nlp:8000
+      WHISPER_MODEL_SIZE: ${WHISPER_MODEL_SIZE:-small}
+      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+      WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
+      WHISPER_NUM_WORKERS: ${WHISPER_NUM_WORKERS:-1}
+      HF_HOME: /root/.cache/huggingface
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-token}
+    volumes:
+      - audio_tmp:/tmp
+      - whisper_cache:/root/.cache/huggingface
+    depends_on:
+      redis:
+        condition: service_healthy
+      nlp:
+        condition: service_started
+    networks:
+      - langphy
 
 # ── Reverse Proxy (Caddy) ─────────────────────────────────────────────────
 
@@ -514,6 +525,7 @@ volumes:
   postgres_data:
   mongo_data:
   redis_data:
+  kafka_data:
   audio_tmp:
   whisper_cache:
   caddy_data:

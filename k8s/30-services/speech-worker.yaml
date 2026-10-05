@@ -1,0 +1,44 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Langphy — speech-worker  (Python RQ worker, NO HTTP port)
+# Consumes the RQ "speech" queue from Redis. Model is baked into the image;
+# it warms up at boot (load_model) before accepting jobs.
+# ═══════════════════════════════════════════════════════════════════════════
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: speech-worker
+  namespace: langphy
+spec:
+  strategy: Recreate
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: langphy-speech-worker
+    spec:
+      containers:
+        - name: speech-worker
+          image: niloyrudra/speech-service:latest
+          command:
+            - "python"
+            - "app/worker.py"
+          restartPolicy: always
+          resources:
+            limits:
+              memory: 4Gi
+            reservations:
+              memory: 2Gi
+          envFrom:
+            - configMapRef:
+                name: langphy-config
+            - secretRef:
+                name: langphy-secrets
+          # No HTTP server → process check (procps is installed in the image
+          # explicitly for this purpose — see services/speech-service/Dockerfile).
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pgrep -f app.worker.py"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5

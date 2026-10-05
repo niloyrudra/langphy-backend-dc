@@ -1,0 +1,34 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Langphy — OPTIONAL Ingress (edge TLS termination)
+# ═══════════════════════════════════════════════════════════════════════════
+# This file is a TEMPLATE. The Ingress API is controller/provider-specific:
+#   • ingress-nginx (works on EKS, GKE and kind with the ingress addon)
+#   • AWS: an ALB via "LoadBalancer" Service, or ingress-nginx
+#   • GCP: the built-in GCP Ingress, or ingress-nginx
+# Read §6/§8/§9 of KUBERNETES_GUIDE.md and align this file with your
+# controller's CRD before applying. TLS certificate provisioning is done by
+# your ingress controller / cert-manager, NOT by this repo.
+#
+# NOT applied by apply.sh (it is skipped on purpose).
+# ═══════════════════════════════════════════════════════════════════════════
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: langphy-api
+  namespace: langphy
+spec:
+  # Route everything (matching hosts below) to the Caddy Service:80
+  selector:
+    app.kubernetes.io/name: langphy-caddy
+  ports:
+    - protocol: TCP
+      port: 80
+  tls:
+    enabled: true
+    termination: true
+  rules:
+    - name: main
+      host: api.langphy.com
+  # Provider-specific settings (certs, IP allow lists, etc.) go under the
+  # appropriate `config:`/`options:` block of YOUR ingress controller —
+  # see its documentation and KUBERNETES_GUIDE.md §6.

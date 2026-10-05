@@ -1,0 +1,79 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Langphy — Redis (the ONLY in-cluster persistent service)
+# Single-instance stateful Deployment + PVC (same shape as the official
+# "Run a Single-Instance Stateful Application" tutorial: strategy Recreate).
+# Serves:  auth rate-limiter (REDIS_URL)  +  speech RQ queue + job store.
+# Keep replicas=1 (the PVC can only be attached to one pod at a time).
+# ═══════════════════════════════════════════════════════════════════════════
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: langphy
+spec:
+  strategy: Recreate
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: langphy-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          # Mirrors compose: cap memory, evict only TTL'd keys (volatile-lru)
+          # so RQ queue entries (no TTL) are protected; AOF for durability.
+          args:
+            - "--maxmemory"
+            - "256mb"
+            - "--maxmemory-policy"
+            - "volatile-lru"
+            - "--appendonly"
+            - "yes"
+          restartPolicy: always
+          resources:
+            limits:
+              memory: 512Mi
+          ports:
+            - containerPort: 6379
+          startupProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 12
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 5
+          volumes:
+            - name: redis-data
+              mountPath: /data
+              persistentVolume:
+                PVC: {}
+      volumeClaimTemplates:
+        - name: redis-data
+          spec:
+            # Cluster-dependent: "standard" = EBS-backed on EKS, standard on GKE,
+            # local disks on kind. Resize = data migration (single node) — see guide §12.
+            storage: 1Gi
+            storageClassName: standard
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: langphy
+spec:
+  # clusterIP: None → redis.langphy.svc.cluster.local resolves to the pod IP
+  # directly (optimal for single-pod backends — official recommendation).
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: langphy-redis
+  ports:
+    - protocol: TCP
+      port: 6379

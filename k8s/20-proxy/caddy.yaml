@@ -1,0 +1,147 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Langphy — Caddy reverse proxy (niloyrudra/caddy, baked Caddyfile)
+# The ONLY public HTTP entry point in-cluster. TLS is terminated at the edge
+# (Ingress / cloud LB) and forwarded here as plain HTTP — the baked Caddyfile
+# already has `auto_https off`.
+#
+# The env vars below map 1:1 to {$SVC_HOST}:{$SVC_PORT} in the Caddyfile.
+# Service DNS names ("auth", "streaks", ...) resolve via the k8s Services.
+#
+# ⚠ NOTE: the baked Caddyfile reads {$SPEECH_API_HOST}/{$SPEECH_API_PORT}
+#   but docker-compose ships SPEECH_HOST/SPEECH_PORT — we set BOTH below so
+#   /api/speech/* works regardless (see KUBERNETES_GUIDE §15, issue #4).
+# ═══════════════════════════════════════════════════════════════════════════
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: caddy
+  namespace: langphy
+spec:
+  strategy: Recreate
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: langphy-caddy
+    spec:
+      containers:
+        - name: caddy
+          image: niloyrudra/caddy:latest
+          restartPolicy: always
+          resources:
+            limits:
+              memory: 256Mi
+          ports:
+            - containerPort: 80
+          env:
+            - name: PORT
+              value: "80"
+            # ── Postgres-backed services ─────────────────────────────────
+            - name: AUTH_HOST
+              value: "auth"
+            - name: AUTH_PORT
+              value: "3000"
+            - name: STREAKS_HOST
+              value: "streaks"
+            - name: STREAKS_PORT
+              value: "3001"
+            - name: PROGRESS_HOST
+              value: "progress"
+            - name: PROGRESS_PORT
+              value: "3002"
+            - name: PERFORMANCE_HOST
+              value: "performance"
+            - name: PERFORMANCE_PORT
+              value: "3003"
+            - name: PROFILE_HOST
+              value: "profile"
+            - name: PROFILE_PORT
+              value: "3004"
+            - name: SETTINGS_HOST
+              value: "settings"
+            - name: SETTINGS_PORT
+              value: "3005"
+            - name: NOTIFICATION_HOST
+              value: "notification"
+            - name: NOTIFICATION_PORT
+              value: "4011"
+            - name: GATEWAY_HOST
+              value: "gateway"
+            - name: GATEWAY_PORT
+              value: "3009"
+            # ── MongoDB content services ─────────────────────────────────
+            - name: CATEGORY_HOST
+              value: "category"
+            - name: CATEGORY_PORT
+              value: "4000"
+            - name: UNIT_HOST
+              value: "unit"
+            - name: UNIT_PORT
+              value: "4001"
+            - name: PRACTICE_HOST
+              value: "practice"
+            - name: PRACTICE_PORT
+              value: "4002"
+            - name: QUIZ_HOST
+              value: "quiz"
+            - name: QUIZ_PORT
+              value: "4003"
+            - name: SPEAKING_HOST
+              value: "speaking"
+            - name: SPEAKING_PORT
+              value: "4004"
+            - name: READING_HOST
+              value: "reading"
+            - name: READING_PORT
+              value: "4005"
+            - name: WRITING_HOST
+              value: "writing"
+            - name: WRITING_PORT
+              value: "4006"
+            - name: LISTENING_HOST
+              value: "listening"
+            - name: LISTENING_PORT
+              value: "4007"
+            # ── AI services ──────────────────────────────────────────────
+            - name: NLP_HOST
+              value: "nlp"
+            - name: NLP_PORT
+              value: "8000"
+            # BOTH variable sets — see header warning
+            - name: SPEECH_API_HOST
+              value: "speech-api"
+            - name: SPEECH_API_PORT
+              value: "8001"
+            - name: SPEECH_HOST
+              value: "speech-api"
+            - name: SPEECH_PORT
+              value: "8001"
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: caddy
+  namespace: langphy
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: langphy-caddy
+  ports:
+    - protocol: TCP
+      port: 80

@@ -1,0 +1,76 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Langphy — gateway-service  (PostgreSQL: langphy_gateway, Kafka producer)
+# Port 3009 · EXTERNAL events aggregator (/api/events*)
+# ═══════════════════════════════════════════════════════════════════════════
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: langphy
+spec:
+  strategy: Recreate
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: langphy-gateway
+    spec:
+      containers:
+        - name: gateway
+          image: niloyrudra/gateway-service:latest
+          command: ["sh", "-c", "node dist/db/migrate.js && node dist/index.js"]
+          restartPolicy: always
+          terminationGracePeriodSeconds: 30
+          resources:
+            limits:
+              memory: 1Gi
+            reservations:
+              memory: 512Mi
+          ports:
+            - containerPort: 3009
+          envFrom:
+            - configMapRef:
+                name: langphy-config
+            - secretRef:
+                name: langphy-secrets
+          env:
+            - name: SERVICE_NAME
+              value: gateway-service
+            - name: PG_DB
+              value: langphy_gateway
+            - name: PORT
+              value: "3009"
+            - name: POSTGRES_DATABASE_URL
+              valueFrom:
+                secretRef:
+                  name: langphy-secrets
+                  key: GATEWAY_POSTGRES_DATABASE_URL
+          startupProbe:
+            httpGet:
+              path: /api/gateway/db
+              port: 3009
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /api/gateway/db
+              port: 3009
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: langphy
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: langphy-gateway
+  ports:
+    - protocol: TCP
+      port: 3009

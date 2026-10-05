@@ -1,0 +1,74 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Langphy — speech-api  (Python/FastAPI/Faster-Whisper)
+# Port 8001 · audio bytes are stored in REDIS (base64) and jobs go to the
+# RQ "speech" queue consumed by speech-worker. No shared volume needed.
+# ═══════════════════════════════════════════════════════════════════════════
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: speech-api
+  namespace: langphy
+spec:
+  strategy: Recreate
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: langphy-speech-api
+    spec:
+      containers:
+        - name: speech-api
+          image: niloyrudra/speech-service:latest
+          command:
+            - "uvicorn"
+            - "app.main:app"
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - "8001"
+          restartPolicy: always
+          terminationGracePeriodSeconds: 30
+          resources:
+            limits:
+              memory: 2Gi
+            reservations:
+              memory: 1Gi
+          ports:
+            - containerPort: 8001
+          envFrom:
+            - configMapRef:
+                name: langphy-config
+            - secretRef:
+                name: langphy-secrets
+          env:
+            - name: PORT
+              value: "8001"
+          startupProbe:
+            httpGet:
+              path: /health/ready
+              port: 8001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 90
+          livenessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8001
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: speech-api
+  namespace: langphy
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: langphy-speech-api
+  ports:
+    - protocol: TCP
+      port: 8001

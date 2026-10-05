@@ -61,14 +61,26 @@ services:
       - langphy
 
   # ── Kafka (KRaft mode - no Zookeeper) ──────────────────────────────────────
+  # Single-node KRaft broker. On Railway:
+  #   • attach a persistent Volume at /var/lib/kafka/data (≥2 GB), and
+  #   • override KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka.railway.internal:9092
+  #     (services then use KAFKA_BROKER=kafka.railway.internal:9092).
+  # Cost tuning (see RAILWAY_DEPLOY.md §Kafka):
+  #   • KAFKA_HEAP_OPTS 256m → fits the cheapest 0.25 vCPU / 512 MB service.
+  #   • KAFKA_LOG_RETENTION_HOURS 48 → keeps the volume small ($0.15/GB/mo).
+  #   • Railway "Serverless" sleep ≈ $2.40/mo; flip to always-on when traffic
+  #     justifies the ~$10/mo 24/7 rate.
   kafka:
     image: apache/kafka:3.7.2
     restart: unless-stopped
     environment:
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx256m"
       KAFKA_NODE_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      # Default works in Docker Compose (service-name DNS). Override on Railway:
+      #   KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka.railway.internal:9092
+      KAFKA_ADVERTISED_LISTENERS: "${KAFKA_ADVERTISED_LISTENERS:-PLAINTEXT://kafka:9092}"
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
@@ -77,7 +89,7 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_RETENTION_HOURS: 48
       KAFKA_LOG_SEGMENT_BYTES: 1073741824
     volumes:
       - kafka_data:/var/lib/kafka/data

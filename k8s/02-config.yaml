@@ -1,0 +1,35 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Langphy — shared NON-SECRET configuration
+# Injected into every Langphy container via  envFrom: - configMapRef
+# Secrets belong in 01-secrets.yaml — NOT here.
+# ═══════════════════════════════════════════════════════════════════════════
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: langphy-config
+  namespace: langphy
+data:
+  NODE_ENV: "production"
+  TZ: "UTC"
+
+  # CORS origin used by auth + gateway (align with your .env CORS_ORIGIN)
+  CORS_ORIGIN: "https://play.google.com"
+
+  # KafkaJS warning suppression (matches compose)
+  KAFKAJS_NO_PARTITIONER_WARNING: "1"
+
+  # ── Redis (in-cluster) — same values the compose file hard-codes ─────
+  REDIS_URL: "redis://redis:6379"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+
+  # ── Speech / NLP service-to-service endpoint ──────────────────────────
+  NLP_SERVICE_URL: "http://nlp:8000"
+
+  # ── Whisper runtime config (matches compose prod values; the image
+  #    already bakes model=small/cpu/int8 — these envs must not drift) ──
+  HF_HOME: "/root/.cache/huggingface"
+  WHISPER_MODEL_SIZE: "small"
+  WHISPER_DEVICE: "cpu"
+  WHISPER_COMPUTE_TYPE: "int8"
+  WHISPER_NUM_WORKERS: "1"

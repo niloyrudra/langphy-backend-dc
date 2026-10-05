@@ -10,7 +10,7 @@
 
 Polyglot, multi-service backend for **Langphy**, a German-language learning app whose client is an **Expo (React Native) app**. It is an **npm workspaces** monorepo with ~17 Node.js/TypeScript Express services plus 2 Python services, sharing infrastructure via Docker Compose. Production target is **Railway**.
 
-The Expo client talks **only** to a Caddy reverse proxy at well-known `/api/*` paths — Caddy fans those out to individual services. Services also talk to each other asynchronously via **Kafka** (Confluent Cloud / Upstash — external, not in-cluster).
+The Expo client talks **only** to a Caddy reverse proxy at well-known `/api/*` paths — Caddy fans those out to individual services. Services also talk to each other asynchronously via **Kafka** — a single-node **KRaft** broker (`apache/kafka:3.7.2`, no ZooKeeper) shipped in `docker-compose.yml` (local: `kafka:9092`, Railway: `kafka.railway.internal:9092`). A managed broker (Confluent/Upstash) is only used when real `KAFKA_SASL_USERNAME`/`KAFKA_SASL_PASSWORD` are set.
 
 ---
 
@@ -68,7 +68,7 @@ The Expo client talks **only** to a Caddy reverse proxy at well-known `/api/*` p
 
 - `nlp-service` — Python, spaCy, port 8000.
 - `speech-service` — Python, Faster-Whisper. Single image, two compose entrypoints: `speech-api` (HTTP, 8001) and `speech-worker` (Redis queue consumer).
-- `redis` — only used by speech-service for the job queue.
+- `redis` — shared: speech-service job queue (RQ) + `auth` rate limiting.
 - `postgres` — single container, init.sql creates 8 non-auth DBs at first boot.
 - `caddy` — reverse proxy; Caddyfile is baked into the image, do not mount as volume.
 
@@ -80,7 +80,7 @@ Every TS service depends on `@langphy/shared` (`"file:../../shared"` in `package
 
 - **`TOPICS`** — single source of truth for Kafka topic names (`shared/events/topics.ts`). **Always import this constant; never hardcode topic strings.**
 - **Zod event schemas + inferred TS types** in `shared/events/<domain>/<event>.v1.schema.ts`. Envelope = `BaseEventSchema` with `event_id`, `event_type`, `event_version`, `occurred_at`, `user_id`, `payload`.
-- **`createKafkaClient()`** — single KafkaJS factory (`shared/src/kafka/kafka.client.ts`). Reads `KAFKA_BROKER` (+ optional `KAFKA_SASL_USERNAME`/`PASSWORD`). Uses `SERVICE_NAME` as `clientId`.
+- **`createKafkaClient()`** — single KafkaJS factory (`shared/src/kafka/kafka.client.ts`). Reads `KAFKA_BROKER` (plaintext by default); enables SASL/SSL only when *real* `KAFKA_SASL_USERNAME`/`PASSWORD` are set (placeholder values like `dummy` are ignored; logs the connection mode at startup). Uses `SERVICE_NAME` as `clientId`.
 - **`connectWithRetry(consumer, name)`** — `shared/src/kafka/kafka.utils.ts`. Use for consumers; loops every 3s with logs.
 
 **After editing anything in `shared/src/`, run `npm run build -w shared`** — services consume the compiled `shared/dist/`.
@@ -223,7 +223,7 @@ The Caddy image bakes the Caddyfile in — **do not** mount it as a volume on Ra
 - **`JWT_KEY` is shared across services** — rotate per env, never commit a real secret. `.env` is gitignored.
 - **Compose YAML & Caddyfile have stacked legacy sections** — only the **top** of each file is the live config. Don't edit the commented-out historical versions.
 - **Postgres on Railway**: `PGDATA` is set to `/var/lib/postgresql/data/pgdata` (subdirectory) so Railway's empty volume doesn't conflict with `lost+found`. Don't change it.
-- **Kafka is external** — no in-cluster broker. Env: `KAFKA_BROKER`, `KAFKA_SASL_*`. Don't try to add a Kafka service to compose.
+- **Kafka is in-compose KRaft** — `docker-compose.yml` ships a single-node `apache/kafka:3.7.2` broker (no ZooKeeper); services default to `KAFKA_BROKER=kafka:9092`, on Railway `kafka.railway.internal:9092`. Managed brokers (Confluent/Upstash) are supported via `KAFKA_SASL_USERNAME`/`KAFKA_SASL_PASSWORD` — set only *real* creds (placeholder values are ignored). See `RAILWAY_DEPLOY.md` Step 1.
 - **Tsup builds**: if a service fails to build shared artifacts, `npm install -D tsup` at root.
 - **`@langphy/auth` specifics** (recently hardened): uses Neon as the Postgres host (`POSTGRES_DATABASE_URL`), has a transactional outbox for Kafka, and security middleware (helmet, express-rate-limit with Redis store, resend for OTP email). Don't regress these.
 - **`@langphy/profile` is the reference for model-level tests** — `services/profile/tests/unit/` shows the pattern (helpers in `tests/helpers/`, jest with ts-jest, `tsconfig.test.json`). Copy that shape if you add tests elsewhere.

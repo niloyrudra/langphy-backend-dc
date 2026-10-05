@@ -31,8 +31,9 @@ npm install -D tsup
 # Build all Docker images & push to Docker Hub (run from repo root)
 bash build-and-push.sh
 
-# Locally run the full stack
-docker compose up -d
+# Locally run the full stack (same KRaft Kafka as production — see LOCAL_DEV.md)
+docker compose -f docker-compose.local.yml --env-file .env.local up -d
+# ... or use your Neon PostgreSQL:  docker compose -f docker-compose.neon.yml --env-file .env.local up -d
 ```
 
 There are **no unit/e2e tests** in this repo (the templates folder documents a planned structure — `tests/unit/`, `tests/e2e/` — but they are not implemented).
@@ -85,7 +86,7 @@ Every TypeScript service depends on `@langphy/shared` (`"file:../../shared"` in 
 
 - **`TOPICS`** — single source of truth for Kafka topic names (`shared/events/topics.ts`). Always import this constant, never hardcode topic strings.
 - **Zod event schemas + inferred TypeScript types** in `shared/events/<domain>/<event>.v1.schema.ts`. Envelope shape lives in `BaseEventSchema` (`event_id`, `event_type`, `event_version`, `occurred_at`, `user_id`, `payload`).
-- **`createKafkaClient()`** — single KafkaJS factory in `shared/src/kafka/kafka.client.ts`. Reads `KAFKA_BROKER` (and optional `KAFKA_SASL_USERNAME`/`PASSWORD` for Confluent Cloud). Returns a `Kafka` configured with `SERVICE_NAME` as `clientId`.
+- **`createKafkaClient()`** — single KafkaJS factory in `shared/src/kafka/kafka.client.ts`. Reads `KAFKA_BROKER` (plaintext by default); enables SASL/SSL only for *real* `KAFKA_SASL_USERNAME`/`PASSWORD` (placeholders like `dummy` are ignored). Returns a `Kafka` configured with `SERVICE_NAME` as `clientId`.
 - **`connectWithRetry(consumer, name)`** — `shared/src/kafka/kafka.utils.ts`. Use this for consumers; loops every 3s with logs.
 
 After editing anything in `shared/src/`, run `npm run build -w shared` — services consume the compiled `dist/`.
@@ -166,7 +167,7 @@ The Caddy image (`infra/caddy/Dockerfile`) bakes the Caddyfile in — do not mou
 ## Infrastructure notes
 
 - **Postgres** lives in a single container; `infra/postgres/init.sql` creates the 8 non-auth databases at first boot. `PGDATA` is set to `/var/lib/postgresql/data/pgdata` (subdirectory) so Railway's empty volume doesn't conflict with `lost+found`.
-- **Kafka** runs externally (Confluent Cloud / Upstash). Env: `KAFKA_BROKER`, `KAFKA_SASL_USERNAME`, `KAFKA_SASL_PASSWORD`. No in-cluster broker.
+- **Kafka** is a single-node **KRaft** broker shipped in `docker-compose.yml` (`apache/kafka:3.7.2`, no ZooKeeper) — reached at `kafka:9092` (compose) or `kafka.railway.internal:9092` (Railway). A managed broker is only used when real `KAFKA_SASL_USERNAME`/`KAFKA_SASL_PASSWORD` are set (see `RAILWAY_DEPLOY.md` Step 1 for cost-tuned setup).
 - **Redis** is shared, used only by the speech service for the job queue.
 - **MongoDB Atlas** is external; each Mongo service reads `MONGO_URI` and uses `<NAME>_MONGO_URI` env per compose entry.
 

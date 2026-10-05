@@ -1,0 +1,76 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Langphy — performance service  (PostgreSQL: langphy_performance, no Kafka)
+# Port 3003
+# ═══════════════════════════════════════════════════════════════════════════
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: performance
+  namespace: langphy
+spec:
+  strategy: Recreate
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: langphy-performance
+    spec:
+      containers:
+        - name: performance
+          image: niloyrudra/performance:latest
+          command: ["sh", "-c", "node dist/db/migrate.js && node dist/index.js"]
+          restartPolicy: always
+          terminationGracePeriodSeconds: 30
+          resources:
+            limits:
+              memory: 1Gi
+            reservations:
+              memory: 512Mi
+          ports:
+            - containerPort: 3003
+          envFrom:
+            - configMapRef:
+                name: langphy-config
+            - secretRef:
+                name: langphy-secrets
+          env:
+            - name: SERVICE_NAME
+              value: performance-service
+            - name: PG_DB
+              value: langphy_performance
+            - name: PORT
+              value: "3003"
+            - name: POSTGRES_DATABASE_URL
+              valueFrom:
+                secretRef:
+                  name: langphy-secrets
+                  key: PERFORMANCE_POSTGRES_DATABASE_URL
+          startupProbe:
+            httpGet:
+              path: /api/performance/db
+              port: 3003
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /api/performance/db
+              port: 3003
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: performance
+  namespace: langphy
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: langphy-performance
+  ports:
+    - protocol: TCP
+      port: 3003

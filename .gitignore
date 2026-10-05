@@ -22,9 +22,11 @@ build/
 # Env files
 .env
 .env.*
-!.env.example
-**.env.example
 **.env.*
+!.env.example
+# service-level .env.example files historically contained REAL credentials —
+# keep the root template trackable but re-ignore nested ones for safety
+services/**/.env.example
 
 # Kubernetes secrets
 **/*secret*.yaml

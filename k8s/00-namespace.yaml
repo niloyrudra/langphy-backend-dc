@@ -1,0 +1,8 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Langphy — Kubernetes Namespace
+# Apply FIRST:  kubectl apply -f k8s/00-namespace.yaml
+# ═══════════════════════════════════════════════════════════════════════════
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: langphy

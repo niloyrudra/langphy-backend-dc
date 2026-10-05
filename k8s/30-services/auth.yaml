@@ -1,0 +1,76 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Langphy — auth service  (PostgreSQL: langphy_auth / Neon, Kafka producer)
+# Port 3000 · compose parity: node dist/db/migrate.js && node dist/index.js
+# ═══════════════════════════════════════════════════════════════════════════
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  namespace: langphy
+spec:
+  strategy: Recreate
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: langphy-auth
+    spec:
+      containers:
+        - name: auth
+          image: niloyrudra/auth:latest
+          command: ["sh", "-c", "node dist/db/migrate.js && node dist/index.js"]
+          restartPolicy: always
+          terminationGracePeriodSeconds: 30
+          resources:
+            limits:
+              memory: 1Gi
+            reservations:
+              memory: 512Mi
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: langphy-config
+            - secretRef:
+                name: langphy-secrets
+          env:
+            - name: SERVICE_NAME
+              value: auth-service
+            - name: PG_DB
+              value: langphy_auth
+            - name: PORT
+              value: "3000"
+            - name: POSTGRES_DATABASE_URL
+              valueFrom:
+                secretRef:
+                  name: langphy-secrets
+                  key: AUTH_POSTGRES_DATABASE_URL
+          startupProbe:
+            httpGet:
+              path: /api/users/db
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /api/users/db
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth
+  namespace: langphy
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: langphy-auth
+  ports:
+    - protocol: TCP
+      port: 3000
