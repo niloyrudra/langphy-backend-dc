@@ -68,6 +68,10 @@
         reverse_proxy {$NOTIFICATION_HOST}:{$NOTIFICATION_PORT}
     }
 
+    handle /api/vocab-arena/* {
+        reverse_proxy {$VOCAB_ARENA_HOST}:{$VOCAB_ARENA_PORT}
+    }
+
     handle /api/category* {
         reverse_proxy {$CATEGORY_HOST}:{$CATEGORY_PORT}
     }

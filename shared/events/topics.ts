@@ -28,6 +28,11 @@ export const TOPICS = {
     PERFORMANCE_UPDATED: "performance.updated.v1",
     PERFORMANCE_UPDATED_DLQ: "performance.updated.dlq.v1",
 
+    // Vocabulary Arena (gamified vocab learning)
+    VOCAB_SESSION_COMPLETED: "vocabulary.session.completed.v1",
+    VOCAB_WORD_MASTERED: "vocabulary.word.mastered.v1",
+    VOCAB_ACHIEVEMENT_UNLOCKED: "vocabulary.achievement.unlocked.v1",
+
     // ACHIEVEMENT_UNLOCKED: "achievement.unlocked.v1",
     // ACHIEVEMENTS_UPDATED: "achievements.updated.v1",
     // ACHIEVEMENTS_UPDATED_DLQ: "achievements.updated.dlq.v1",

@@ -3,8 +3,6 @@ import type {
     BaseHandler,
     HandlerContext,
 } from "./handlers/base-handler.js";
-import { SessionCompletedHandler } from "./handlers/session-completed.handler.js";
-import { VocabSessionCompletedHandler } from "./handlers/vocab-session-completed.handler.js";
 import { UserDeletedHandler } from "./handlers/user-deleted.handler.js";
 
 /**
@@ -17,8 +15,6 @@ import { UserDeletedHandler } from "./handlers/user-deleted.handler.js";
  *   3. Add the topic to the consumer's subscribe list in `consumer.ts`.
  */
 export const topicHandlerMap: Record<string, BaseHandler<any>> = {
-    [TOPICS.SESSION_COMPLETED]: new SessionCompletedHandler(),
-    [TOPICS.VOCAB_SESSION_COMPLETED]: new VocabSessionCompletedHandler(),
     [TOPICS.USER_DELETED]: new UserDeletedHandler(),
 };
 

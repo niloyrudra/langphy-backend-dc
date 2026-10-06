@@ -1,16 +1,12 @@
 import { kafka } from "./kafka.client.js";
 import { connectWithRetry } from "@langphy/shared";
 import {
-    SessionCompletedEventSchema,
     UserDeletedEventSchema,
-    VocabSessionCompletedEventSchema,
-    type SessionCompletedEvent,
     type UserDeletedEvent,
-    type VocabSessionCompletedEvent,
 } from "@langphy/shared";
 import { topicHandlerMap, type HandlerContext } from "./handler-registry.js";
 
-const serviceName = process.env.SERVICE_NAME || "streaks-service";
+const serviceName = process.env.SERVICE_NAME || "vocab-arena-service";
 const consumerGroupId = `${serviceName}-group`;
 
 export const consumer = kafka.consumer({
@@ -25,14 +21,6 @@ export const initConsumer = async () => {
     await connectWithRetry(consumer, serviceName);
 
     await consumer.subscribe({
-        topic: "session.completed.v1",
-        fromBeginning: false,
-    });
-    await consumer.subscribe({
-        topic: "vocabulary.session.completed.v1",
-        fromBeginning: false,
-    });
-    await consumer.subscribe({
         topic: "user.deleted.v1",
         fromBeginning: false,
     });
@@ -46,7 +34,7 @@ export const initConsumer = async () => {
 
             if (!rawValue) {
                 console.warn(
-                    `[streaks-consumer] empty message on ${topic}; skipping`,
+                    `[vocab-arena-consumer] empty message on ${topic}; skipping`,
                 );
                 // No data to process; safe to advance the offset.
                 await commit(topic, partition, offset);
@@ -62,7 +50,7 @@ export const initConsumer = async () => {
                 // Malformed JSON — log + skip. Re-delivery would never
                 // fix this.
                 console.error(
-                    `[streaks-consumer] malformed JSON on ${topic}, dropping:`,
+                    `[vocab-arena-consumer] malformed JSON on ${topic}, dropping:`,
                     parseErr,
                 );
                 await commit(topic, partition, offset);
@@ -72,25 +60,19 @@ export const initConsumer = async () => {
             const handler = topicHandlerMap[topic];
             if (!handler) {
                 console.warn(
-                    `[streaks-consumer] no handler for ${topic}; skipping`,
+                    `[vocab-arena-consumer] no handler for ${topic}; skipping`,
                 );
                 await commit(topic, partition, offset);
                 return;
             }
 
             try {
-                if (topic === "session.completed.v1") {
-                    const event = SessionCompletedEventSchema.parse(raw);
-                    await handler.handle(event, ctx);
-                } else if (topic === "vocabulary.session.completed.v1") {
-                    const event = VocabSessionCompletedEventSchema.parse(raw);
-                    await handler.handle(event, ctx);
-                } else if (topic === "user.deleted.v1") {
+                if (topic === "user.deleted.v1") {
                     const event = UserDeletedEventSchema.parse(raw);
                     await handler.handle(event, ctx);
                 } else {
                     console.warn(
-                        `[streaks-consumer] unhandled topic ${topic}; skipping`,
+                        `[vocab-arena-consumer] unhandled topic ${topic}; skipping`,
                     );
                 }
                 // Successful handler → safe to commit.
@@ -100,16 +82,15 @@ export const initConsumer = async () => {
                 // let Kafka re-deliver. We still log the raw payload so
                 // a DLQ-style investigation is possible.
                 console.error(
-                    `[streaks-consumer] handler failed for ${topic} at ${partition}:${offset}:`,
+                    `[vocab-arena-consumer] handler failed for ${topic} at ${partition}:${offset}:`,
                     err,
                 );
                 console.error(
-                    `[streaks-consumer] raw message: ${rawValue}`,
+                    `[vocab-arena-consumer] raw message: ${rawValue}`,
                 );
                 // Re-throw so the consumer's retry/backoff kicks in for
                 // transient errors. Schema errors will keep failing —
-                // that's the cost of having no DLQ; future work can add
-                // one (TOPICS.STREAK_UPDATED_DLQ already exists).
+                // that's the cost of having no DLQ.
                 throw err;
             }
         },
@@ -134,4 +115,4 @@ async function commit(
 
 // Keep type-only exports so handler files can still reference these
 // symbols if they need to.
-export type { SessionCompletedEvent, UserDeletedEvent, VocabSessionCompletedEvent };
+export type { UserDeletedEvent };

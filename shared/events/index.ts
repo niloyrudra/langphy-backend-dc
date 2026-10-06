@@ -17,4 +17,6 @@ export * from "./settings-updated/index.js";
 
 export * from "./progress/index.js";
 
+export * from "./vocabulary/index.js";
+
 // export * from "./achievement/index.js";

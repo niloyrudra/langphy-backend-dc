@@ -12,7 +12,7 @@ REPO_ROOT=$(pwd)
 echo "🔨 Building from: $REPO_ROOT"
 
 # ── PostgreSQL services ────────────────────────────────────────────────────
-PG_SERVICES=(auth streaks progress performance profile settings notification gateway-service)
+PG_SERVICES=(auth streaks progress performance profile settings notification gateway-service vocab-arena)
 
 for svc in "${PG_SERVICES[@]}"; do
     echo ""

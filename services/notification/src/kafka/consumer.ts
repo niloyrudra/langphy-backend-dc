@@ -1,4 +1,4 @@
-import { connectWithRetry, ReminderTriggeredEventSchema, SessionCompletedEventSchema, StreakUpdatedEventSchema, TOPICS, UserDeletedEventSchema, UserRegisteredEventSchema } from "@langphy/shared";
+import { connectWithRetry, ReminderTriggeredEventSchema, SessionCompletedEventSchema, StreakUpdatedEventSchema, TOPICS, UserDeletedEventSchema, UserRegisteredEventSchema, VocabSessionCompletedEventSchema, VocabWordMasteredEventSchema, VocabAchievementUnlockedEventSchema } from "@langphy/shared";
 import { kafka } from "./kafka.client.js"
 import { EventIndexModel } from "../models/eventIndex.model.js";
 import { topicHandlerMap } from "../application/handle.registry.js";
@@ -38,6 +38,21 @@ export const initConsumer = async () => {
 
     await consumer.subscribe({
         topic: TOPICS.SESSION_COMPLETED,
+        fromBeginning: false
+    });
+
+    await consumer.subscribe({
+        topic: TOPICS.VOCAB_SESSION_COMPLETED,
+        fromBeginning: false
+    });
+
+    await consumer.subscribe({
+        topic: TOPICS.VOCAB_WORD_MASTERED,
+        fromBeginning: false
+    });
+
+    await consumer.subscribe({
+        topic: TOPICS.VOCAB_ACHIEVEMENT_UNLOCKED,
         fromBeginning: false
     });
 
@@ -84,6 +99,15 @@ export const initConsumer = async () => {
                 }
                 else if (topic === TOPICS.SESSION_COMPLETED) {
                     event = SessionCompletedEventSchema.parse(raw);
+                }
+                else if (topic === TOPICS.VOCAB_SESSION_COMPLETED) {
+                    event = VocabSessionCompletedEventSchema.parse(raw);
+                }
+                else if (topic === TOPICS.VOCAB_WORD_MASTERED) {
+                    event = VocabWordMasteredEventSchema.parse(raw);
+                }
+                else if (topic === TOPICS.VOCAB_ACHIEVEMENT_UNLOCKED) {
+                    event = VocabAchievementUnlockedEventSchema.parse(raw);
                 }
                 else if (topic === TOPICS.STREAK_UPDATED) {
                     event = StreakUpdatedEventSchema.parse(raw);

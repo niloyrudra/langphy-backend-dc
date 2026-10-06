@@ -299,6 +299,29 @@ services:
     networks:
       - langphy
 
+  vocab-arena:
+    image: niloyrudra/vocab-arena
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      <<: [*pg, *kafka, *jwt]
+      SERVICE_NAME: vocab-arena-service
+      PG_DB: langphy_vocab_arena
+      POSTGRES_DATABASE_URL: ${VOCAB_ARENA_POSTGRES_DATABASE_URL:-}
+    command: sh -c "node dist/db/migrate.js && node dist/index.js"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3010/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - langphy
+
   # ── MongoDB services ──────────────────────────────────────────────────────
 
   category:
@@ -576,6 +599,8 @@ services:
       NLP_PORT: "8000"
       SPEECH_HOST: speech-api
       SPEECH_PORT: "8001"
+      VOCAB_ARENA_HOST: vocab-arena
+      VOCAB_ARENA_PORT: "3010"
     ports:
       - "80:80"
       - "443:443"
